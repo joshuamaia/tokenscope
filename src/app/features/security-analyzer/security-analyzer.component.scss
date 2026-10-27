@@ -1,0 +1,124 @@
+.overview {
+  display: grid;
+  grid-template-columns: minmax(280px, 380px) minmax(0, 1fr);
+  gap: 16px;
+}
+.score-card {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+}
+.grade {
+  font-size: 1.05rem;
+  margin-bottom: 6px;
+  strong {
+    font-size: 1.6rem;
+    margin-left: 4px;
+  }
+}
+.sev-grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 10px;
+}
+.sev-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  cursor: pointer;
+  font: inherit;
+  color: var(--text);
+  border-top: 3px solid var(--sev);
+  transition:
+    transform 0.15s,
+    box-shadow 0.15s;
+  strong {
+    font-size: 2rem;
+    color: var(--sev);
+    line-height: 1;
+  }
+  span {
+    text-transform: capitalize;
+    color: var(--text-muted);
+    font-size: 0.85rem;
+  }
+  &:hover {
+    transform: translateY(-2px);
+  }
+  &.active {
+    box-shadow: 0 0 0 2px var(--sev);
+  }
+}
+.findings {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.finding {
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--sev);
+  border-radius: var(--radius);
+  background: var(--surface-2);
+  overflow: hidden;
+}
+.finding-head {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  .grow {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+  }
+}
+.f-icon {
+  color: var(--sev);
+  width: 32px;
+  height: 32px;
+  border-radius: 9px;
+  display: grid;
+  place-items: center;
+  background: color-mix(in srgb, var(--sev) 14%, transparent);
+  flex-shrink: 0;
+}
+.f-title {
+  font-weight: 650;
+}
+.f-desc {
+  font-size: 0.82rem;
+  color: var(--text-muted);
+}
+.chev {
+  color: var(--text-subtle);
+  transition: transform 0.2s;
+}
+.open .chev {
+  transform: rotate(180deg);
+}
+.f-body {
+  padding: 4px 14px 14px 56px;
+  animation: fade-in 0.2s ease;
+}
+@media (max-width: 960px) {
+  .overview {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+@media (max-width: 640px) {
+  .sev-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  .f-body {
+    padding-left: 14px;
+  }
+}

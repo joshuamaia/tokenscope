@@ -1,0 +1,87 @@
+<section class="page">
+  <header class="page-head">
+    <div>
+      <div class="page-title">
+        <ts-icon name="flask" [size]="24" />
+        <h1>Demo Playground</h1>
+      </div>
+      <p class="page-subtitle">
+        Ready-to-run scenarios. Every token is generated and signed in your browser at load time
+        with a public test key — no backend, no real tokens. Load any demo as many times as you
+        like.
+      </p>
+    </div>
+  </header>
+
+  <div class="demo-grid">
+    @for (card of cards; track card.id) {
+      <article class="card demo tone-{{ card.tone }}" [class.featured]="card.featured">
+        <div class="demo-head">
+          <span class="demo-icon"><ts-icon [name]="card.icon" [size]="20" /></span>
+          <div class="grow">
+            <span class="section-label">Demo {{ card.number }}</span>
+            <h2>{{ card.title }}</h2>
+          </div>
+          @if (card.featured) {
+            <span class="badge badge-accent">Highlighted</span>
+          }
+        </div>
+        <p class="muted">{{ card.description }}</p>
+        <div class="expected">
+          <span class="section-label">Expected result</span>
+          <span class="mono small">{{ card.expected }}</span>
+        </div>
+        <div class="row actions">
+          <button
+            type="button"
+            class="btn"
+            [class.btn-gradient]="card.featured"
+            [class.btn-primary]="!card.featured"
+            [disabled]="loading() !== null"
+            (click)="run(card, card.primary.action)"
+          >
+            @if (loading() === card.id + ':' + card.primary.action) {
+              <span class="spinner"></span>
+            } @else {
+              <ts-icon name="play" [size]="14" />
+            }
+            {{ card.primary.label }}
+          </button>
+          @if (card.secondary; as s) {
+            <button
+              type="button"
+              class="btn"
+              [disabled]="loading() !== null"
+              (click)="run(card, s.action)"
+            >
+              @if (loading() === card.id + ':' + s.action) {
+                <span class="spinner"></span>
+              }
+              {{ s.label }}
+            </button>
+          }
+        </div>
+      </article>
+    }
+  </div>
+
+  <div class="card">
+    <div class="card-head">
+      <h2><ts-icon name="key" /> Demo fixtures</h2>
+    </div>
+    <dl class="kv">
+      <dt>Algorithm</dt>
+      <dd class="mono">HS256 (kid: tokenscope-demo-hs256)</dd>
+      <dt>Test secret</dt>
+      <dd class="mono break">{{ secret }}</dd>
+      <dt>Issuer</dt>
+      <dd class="mono">{{ issuer }}</dd>
+      <dt>Audience</dt>
+      <dd class="mono">{{ audience }}</dd>
+    </dl>
+    <p class="tiny subtle note">
+      This secret is intentionally public so the demos are reproducible and verifiable. Timestamps
+      are computed relative to the moment each demo is loaded.
+    </p>
+  </div>
+</section>

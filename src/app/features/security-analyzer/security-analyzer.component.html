@@ -1,0 +1,204 @@
+<section class="page">
+  <header class="page-head">
+    <div>
+      <div class="page-title">
+        <ts-icon name="shield" [size]="24" />
+        <h1>Security Analyzer</h1>
+      </div>
+      <p class="page-subtitle">
+        Static analysis of the token against {{ rules.length }} documented rules and a configurable
+        policy. The score measures policy conformance — it is not a security guarantee.
+      </p>
+    </div>
+    <button type="button" class="btn" (click)="showPolicy.set(!showPolicy())">
+      <ts-icon name="wrench" [size]="15" /> {{ showPolicy() ? 'Hide policy' : 'Configure policy' }}
+    </button>
+  </header>
+
+  @if (showPolicy()) {
+    <div class="card policy">
+      <div class="card-head">
+        <h2><ts-icon name="wrench" /> Analysis policy</h2>
+        <button type="button" class="btn btn-ghost btn-sm" (click)="resetPolicy()">
+          <ts-icon name="refresh" [size]="14" /> Reset defaults
+        </button>
+      </div>
+      <div class="form-grid">
+        <div class="field">
+          <label for="maxLife">Maximum token lifetime (minutes)</label>
+          <input
+            id="maxLife"
+            class="input"
+            type="number"
+            min="1"
+            [value]="policy().maxLifetimeMinutes"
+            (change)="setMaxLifetime($any($event.target).value)"
+          />
+        </div>
+        <div class="field">
+          <label for="pskew">Clock skew (seconds)</label>
+          <input
+            id="pskew"
+            class="input"
+            type="number"
+            min="0"
+            max="3600"
+            [value]="policy().clockSkewSeconds"
+            (change)="setSkew($any($event.target).value)"
+          />
+        </div>
+        <div class="field">
+          <label for="req">Required claims</label>
+          <input
+            id="req"
+            class="input mono-input"
+            [value]="policy().requiredClaims.join(', ')"
+            (change)="setList('requiredClaims', $any($event.target).value)"
+          />
+          <span class="hint">Comma-separated, e.g. iss, sub, aud, exp, iat, jti</span>
+        </div>
+        <div class="field">
+          <label for="algs">Allowed algorithms</label>
+          <input
+            id="algs"
+            class="input mono-input"
+            [value]="policy().allowedAlgorithms.join(', ')"
+            (change)="setList('allowedAlgorithms', $any($event.target).value)"
+          />
+        </div>
+      </div>
+    </div>
+  }
+
+  <div class="card stack">
+    <ts-token-input
+      [(value)]="workspace.token"
+      [rows]="3"
+      [sampleable]="true"
+      (sample)="loadSample()"
+    />
+    <ts-send-to [token]="workspace.token()" exclude="security" />
+  </div>
+
+  @if (report(); as r) {
+    <div class="overview">
+      <div class="card score-card">
+        <ts-score-gauge [score]="r.score" />
+        <div>
+          <div class="grade">
+            Grade <strong>{{ r.grade }}</strong>
+          </div>
+          <p class="small muted">
+            100 − Σ penalties (critical {{ penalty.critical }}, high {{ penalty.high }}, medium
+            {{ penalty.medium }}, low {{ penalty.low }}, info {{ penalty.info }}).
+          </p>
+        </div>
+      </div>
+      <div class="sev-grid">
+        @for (s of severities; track s) {
+          <button
+            type="button"
+            class="card sev-card sev-{{ s }}"
+            [class.active]="filter() === s"
+            [attr.aria-pressed]="filter() === s"
+            (click)="toggleFilter(s)"
+          >
+            <strong>{{ r.counts[s] }}</strong>
+            <span>{{ s }}</span>
+          </button>
+        }
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-head">
+        <div>
+          <h2><ts-icon name="shield-alert" /> Findings</h2>
+          <p class="card-sub">
+            {{ visibleFindings().length }} of {{ r.findings.length }} shown{{
+              filter() ? ' · filtered by ' + filter() : ''
+            }}
+          </p>
+        </div>
+        @if (filter()) {
+          <button type="button" class="btn btn-ghost btn-sm" (click)="filter.set(null)">
+            Clear filter
+          </button>
+        }
+      </div>
+      <div class="findings">
+        @for (f of visibleFindings(); track f.ruleId + f.title) {
+          <div
+            class="finding sev-{{ f.severity }}"
+            [class.open]="expanded() === f.ruleId + f.title"
+          >
+            <button
+              type="button"
+              class="finding-head"
+              [attr.aria-expanded]="expanded() === f.ruleId + f.title"
+              (click)="toggle(f.ruleId + f.title)"
+            >
+              <span class="f-icon"><ts-icon [name]="severityIcon[f.severity]" [size]="17" /></span>
+              <span class="grow">
+                <span class="f-title">{{ f.title }}</span>
+                <span class="f-desc">{{ f.description }}</span>
+              </span>
+              <span class="mono tiny subtle">{{ f.ruleId }}</span>
+              <span class="badge badge-sev">{{ f.severity }}</span>
+              <ts-icon name="chevron-down" [size]="15" class="chev" />
+            </button>
+            @if (expanded() === f.ruleId + f.title) {
+              <dl class="kv f-body">
+                <dt>Evidence</dt>
+                <dd class="mono">{{ f.evidence }}</dd>
+                <dt>Potential impact</dt>
+                <dd>{{ f.impact }}</dd>
+                <dt>Recommendation</dt>
+                <dd>{{ f.recommendation }}</dd>
+              </dl>
+            }
+          </div>
+        } @empty {
+          <div class="alert alert-success">
+            <ts-icon name="circle-check" [size]="16" />
+            <span
+              >No findings{{ filter() ? ' for this severity' : '' }}. The token conforms to the
+              configured policy.</span
+            >
+          </div>
+        }
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-head">
+        <h2><ts-icon name="circle-check" /> Passed rules</h2>
+      </div>
+      <div class="chip-list">
+        @for (p of r.passedRules; track p) {
+          <span class="chip chip-role">{{ p }}</span>
+        }
+      </div>
+    </div>
+  } @else if (workspace.token()) {
+    <div class="alert alert-danger">
+      <ts-icon name="circle-x" [size]="16" /> The token could not be decoded, so it cannot be
+      analyzed. See the JWT Inspector for structural errors.
+    </div>
+  } @else {
+    <div class="empty">
+      <div class="empty-icon"><ts-icon name="shield" [size]="24" /></div>
+      <h3>Analyze a token</h3>
+      <p>
+        Paste a JWT to evaluate algorithm, lifetime, temporal consistency, identity claims, header
+        key references and policy compliance.
+      </p>
+      <div class="row">
+        <button type="button" class="btn btn-primary" (click)="loadSample('expired')">
+          <ts-icon name="play" [size]="14" /> Expired token example
+        </button>
+        <button type="button" class="btn" (click)="loadSample('valid')">Valid token example</button>
+      </div>
+    </div>
+  }
+</section>

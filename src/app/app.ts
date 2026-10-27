@@ -1,12 +1,14 @@
-import { Component, signal } from '@angular/core';
-import { RouterOutlet } from '@angular/router';
+import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
+import { ThemeService } from './core/services/theme.service';
+import { ShellComponent } from './layout/shell/shell.component';
 
 @Component({
-  imports: [RouterOutlet],
   selector: 'app-root',
-  styleUrl: './app.scss',
-  templateUrl: './app.html',
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  imports: [ShellComponent],
+  template: '<ts-shell />',
 })
 export class App {
-  protected readonly title = signal('tokenscope');
+  // Instantiated eagerly so the stored theme is applied before first paint.
+  private readonly theme = inject(ThemeService);
 }

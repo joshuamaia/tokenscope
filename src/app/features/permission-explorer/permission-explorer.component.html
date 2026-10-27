@@ -1,0 +1,335 @@
+<section class="page">
+  <header class="page-head">
+    <div>
+      <div class="page-title">
+        <ts-icon name="users" [size]="24" />
+        <h1>Role &amp; Permission Explorer</h1>
+      </div>
+      <p class="page-subtitle">
+        Explore roles, scopes and authorities from any claim — including nested paths such as
+        realm_access.roles — and simulate endpoint rules with the Spring naming convention (ROLE_ /
+        SCOPE_).
+      </p>
+    </div>
+  </header>
+
+  <div class="top-grid">
+    <div class="card stack">
+      <ts-token-input
+        [(value)]="workspace.token"
+        [rows]="4"
+        [sampleable]="true"
+        (sample)="loadSample()"
+      />
+      <ts-send-to [token]="workspace.token()" exclude="permissions" />
+    </div>
+    <div class="card stack">
+      <div class="row-between">
+        <h3><ts-icon name="layers" [size]="16" /> Claim sources</h3>
+        <select
+          class="select select-sm"
+          aria-label="Load a provider preset"
+          (change)="applyPreset($any($event.target).value); $any($event.target).value = ''"
+        >
+          <option value="">Provider preset…</option>
+          @for (p of presets; track p.label; let i = $index) {
+            <option [value]="i">{{ p.label }}</option>
+          }
+        </select>
+      </div>
+      <div class="field">
+        <label for="sources"
+          >One per line: <span class="mono">path:kind</span> (kind = role | scope | authority). Use
+          <span class="mono">*</span> for any key.</label
+        >
+        <textarea
+          id="sources"
+          class="textarea"
+          rows="6"
+          spellcheck="false"
+          [value]="sourcesText()"
+          (input)="sourcesText.set($any($event.target).value)"
+        ></textarea>
+      </div>
+    </div>
+  </div>
+
+  @if (decoded().decoded) {
+    <div class="grid-3">
+      <div class="card perm-card roles">
+        <div class="card-head">
+          <h3><ts-icon name="users" [size]="16" /> Roles ({{ extracted().roles.length }})</h3>
+        </div>
+        <div class="chip-list">
+          @for (r of extracted().roles; track r) {
+            <span class="chip chip-role">{{ r }}</span>
+          } @empty {
+            <span class="subtle small">No roles found</span>
+          }
+        </div>
+      </div>
+      <div class="card perm-card scopes">
+        <div class="card-head">
+          <h3><ts-icon name="target" [size]="16" /> Scopes ({{ extracted().scopes.length }})</h3>
+        </div>
+        <div class="chip-list">
+          @for (s of extracted().scopes; track s) {
+            <span class="chip chip-scope">{{ s }}</span>
+          } @empty {
+            <span class="subtle small">No scopes found</span>
+          }
+        </div>
+      </div>
+      <div class="card perm-card auths">
+        <div class="card-head">
+          <h3>
+            <ts-icon name="key" [size]="16" /> Authorities ({{ extracted().authorities.length }})
+          </h3>
+        </div>
+        <div class="chip-list">
+          @for (a of extracted().authorities; track a) {
+            <span class="chip chip-authority">{{ a }}</span>
+          } @empty {
+            <span class="subtle small">No authority claims found</span>
+          }
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-head">
+        <div>
+          <h2><ts-icon name="route" /> Detected claims</h2>
+          <p class="card-sub">
+            Effective authorities with Spring naming:
+            <span class="mono">{{ authorities().join(', ') || 'none' }}</span>
+          </p>
+        </div>
+      </div>
+      <div class="table-wrap">
+        <table class="table">
+          <thead>
+            <tr>
+              <th>Claim path</th>
+              <th>Kind</th>
+              <th>Values</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (m of extracted().matches; track m.path + m.kind) {
+              <tr>
+                <td class="mono">{{ m.path }}</td>
+                <td>
+                  <span
+                    class="badge"
+                    [class.badge-success]="m.kind === 'role'"
+                    [class.badge-info]="m.kind === 'scope'"
+                    [class.badge-accent]="m.kind === 'authority'"
+                    >{{ m.kind }}</span
+                  >
+                </td>
+                <td class="mono small">{{ m.values.join(', ') }}</td>
+              </tr>
+            } @empty {
+              <tr>
+                <td colspan="3" class="muted">
+                  None of the configured sources exist in this token.
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="sim-grid">
+      <div class="card">
+        <div class="card-head">
+          <div>
+            <h2><ts-icon name="layers" /> Permission Matrix</h2>
+            <p class="card-sub">Each endpoint rule evaluated against the effective authorities.</p>
+          </div>
+        </div>
+        <div class="table-wrap">
+          <table class="table">
+            <thead>
+              <tr>
+                <th>Endpoint</th>
+                <th>Rule</th>
+                <th>Result</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (row of matrixResults(); track row.rule.id) {
+                <tr>
+                  <td class="mono small nowrap">
+                    <span class="method m-{{ row.rule.method }}">{{ row.rule.method }}</span>
+                    {{ row.rule.endpoint }}
+                  </td>
+                  <td class="mono small">{{ row.rule.expression }}</td>
+                  <td>
+                    @if (row.evaluation.parsed) {
+                      <span
+                        class="badge"
+                        [class.badge-success]="row.evaluation.granted"
+                        [class.badge-danger]="!row.evaluation.granted"
+                        >{{ row.evaluation.granted ? 'Granted' : 'Denied' }} — Simulated</span
+                      >
+                    } @else {
+                      <span class="badge badge-warning" [title]="row.evaluation.parseError ?? ''"
+                        >Invalid rule</span
+                      >
+                    }
+                  </td>
+                  <td class="nowrap">
+                    <button
+                      type="button"
+                      class="btn btn-ghost btn-icon btn-sm"
+                      aria-label="Diagnose this rule in the Troubleshooter"
+                      title="Open in Authentication Troubleshooter"
+                      (click)="openMatrixRule(row.rule)"
+                    >
+                      <ts-icon name="stethoscope" [size]="14" />
+                    </button>
+                    <button
+                      type="button"
+                      class="btn btn-ghost btn-icon btn-sm"
+                      aria-label="Remove rule"
+                      (click)="removeRule(row.rule.id)"
+                    >
+                      <ts-icon name="trash" [size]="14" />
+                    </button>
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+        <form
+          class="add-rule"
+          (submit)="$event.preventDefault(); addRule(m.value, ep.value, ex.value); ex.value = ''"
+        >
+          <select #m class="select" aria-label="Method">
+            @for (method of methods; track method) {
+              <option [value]="method">{{ method }}</option>
+            }
+          </select>
+          <input #ep class="input mono-input" placeholder="/api/resource" aria-label="Endpoint" />
+          <input
+            #ex
+            class="input mono-input"
+            placeholder="hasAuthority('SCOPE_read')"
+            aria-label="Rule expression"
+          />
+          <button type="submit" class="btn"><ts-icon name="plus" [size]="14" /> Add</button>
+        </form>
+      </div>
+
+      <div class="card sim">
+        <div class="card-head">
+          <h2><ts-icon name="target" /> Authorization simulator</h2>
+        </div>
+        <div class="stack">
+          <div class="method-row">
+            <div class="field">
+              <label for="sm">Method</label>
+              <select
+                id="sm"
+                class="select"
+                [value]="simMethod()"
+                (change)="simMethod.set($any($event.target).value)"
+              >
+                @for (method of methods; track method) {
+                  <option [value]="method">{{ method }}</option>
+                }
+              </select>
+            </div>
+            <div class="field grow">
+              <label for="se">Endpoint</label>
+              <input
+                id="se"
+                class="input mono-input"
+                [value]="simEndpoint()"
+                (input)="simEndpoint.set($any($event.target).value)"
+              />
+            </div>
+          </div>
+          <div class="form-grid">
+            <div class="field">
+              <label for="srt">Rule type</label>
+              <select
+                id="srt"
+                class="select"
+                [value]="simRuleType()"
+                (change)="simRuleType.set($any($event.target).value)"
+              >
+                @for (r of ruleTypes; track r.value) {
+                  <option [value]="r.value">{{ r.label }}</option>
+                }
+              </select>
+            </div>
+            <div class="field">
+              <label for="sr">Required role / authority</label>
+              <input
+                id="sr"
+                class="input mono-input"
+                [value]="simRequired()"
+                (input)="simRequired.set($any($event.target).value)"
+                placeholder="ADMIN"
+              />
+            </div>
+          </div>
+          <div class="expr mono small">{{ simExpression() || '—' }}</div>
+          @if (simExpression()) {
+            <div class="decision" [class.granted]="simulation().granted">
+              <ts-icon
+                [name]="simulation().granted ? 'shield-check' : 'shield-alert'"
+                [size]="24"
+              />
+              <div>
+                <strong>{{
+                  simulation().granted ? 'Granted — Simulated' : 'Denied — Simulated'
+                }}</strong>
+                @for (c of simulation().checks; track $index) {
+                  @if (!c.result && c.missing.length) {
+                    <div class="small">
+                      Missing: <span class="mono">{{ c.missing.join(', ') }}</span>
+                    </div>
+                  }
+                }
+              </div>
+            </div>
+          }
+          <button
+            type="button"
+            class="btn btn-gradient"
+            [disabled]="!simExpression()"
+            (click)="openSimulation()"
+          >
+            <ts-icon name="stethoscope" [size]="15" /> Open in Authentication Troubleshooter
+          </button>
+          <p class="tiny subtle">
+            Transfers the token and this rule to the Troubleshooter, with converters matching the
+            detected claims.
+          </p>
+        </div>
+      </div>
+    </div>
+  } @else if (workspace.token()) {
+    <div class="alert alert-danger">
+      <ts-icon name="circle-x" [size]="16" /> The token could not be decoded.
+    </div>
+  } @else {
+    <div class="empty">
+      <div class="empty-icon"><ts-icon name="users" [size]="24" /></div>
+      <h3>Explore token permissions</h3>
+      <p>
+        Paste a JWT to extract roles, scopes and authorities and test them against endpoint rules.
+      </p>
+      <button type="button" class="btn btn-primary" (click)="loadSample()">
+        <ts-icon name="play" [size]="14" /> Load example token
+      </button>
+    </div>
+  }
+</section>

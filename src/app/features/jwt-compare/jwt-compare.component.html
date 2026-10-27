@@ -1,0 +1,232 @@
+<section class="page">
+  <header class="page-head">
+    <div>
+      <div class="page-title">
+        <ts-icon name="compare" [size]="24" />
+        <h1>JWT Compare</h1>
+      </div>
+      <p class="page-subtitle">
+        Deep comparison of two tokens: header, claims, roles, scopes, authorities, issuer, audience,
+        expiration and algorithm.
+      </p>
+    </div>
+    <div class="row">
+      <button type="button" class="btn" (click)="loadDemo()">
+        <ts-icon name="flask" [size]="15" /> Load comparison demo
+      </button>
+      @if (result()) {
+        <ts-copy-button [text]="report()" label="Copy report" toast="Comparison report copied" />
+      }
+    </div>
+  </header>
+
+  <div class="pair">
+    <div class="card stack side side-a">
+      <div class="row-between">
+        <span class="token-tag a">Token A</span>
+        @if (workspace.token()) {
+          <button type="button" class="btn btn-ghost btn-sm" (click)="useActive('A')">
+            Use active token
+          </button>
+        }
+      </div>
+      <ts-token-input label="Encoded JWT (A)" [(value)]="workspace.compareA" [rows]="4" />
+    </div>
+    <button
+      type="button"
+      class="btn btn-icon swap"
+      aria-label="Swap tokens A and B"
+      title="Swap A and B"
+      (click)="swap()"
+    >
+      <ts-icon name="refresh" [size]="16" />
+    </button>
+    <div class="card stack side side-b">
+      <div class="row-between">
+        <span class="token-tag b">Token B</span>
+        @if (workspace.token()) {
+          <button type="button" class="btn btn-ghost btn-sm" (click)="useActive('B')">
+            Use active token
+          </button>
+        }
+      </div>
+      <ts-token-input label="Encoded JWT (B)" [(value)]="workspace.compareB" [rows]="4" />
+    </div>
+  </div>
+
+  @if (result(); as r) {
+    <div class="stats row">
+      <span class="badge badge-success">{{ r.stats.added }} added</span>
+      <span class="badge badge-danger">{{ r.stats.removed }} removed</span>
+      <span class="badge badge-warning">{{ r.stats.modified }} modified</span>
+      <span class="badge">{{ r.stats.unchanged }} unchanged</span>
+    </div>
+
+    <div class="card">
+      <div class="tabs" role="tablist">
+        <button
+          type="button"
+          role="tab"
+          [class.active]="tab() === 'differences'"
+          (click)="tab.set('differences')"
+        >
+          Differences
+        </button>
+        <button
+          type="button"
+          role="tab"
+          [class.active]="tab() === 'summary'"
+          (click)="tab.set('summary')"
+        >
+          Summary
+        </button>
+        <button
+          type="button"
+          role="tab"
+          [class.active]="tab() === 'json'"
+          (click)="tab.set('json')"
+        >
+          JSON side by side
+        </button>
+      </div>
+
+      @switch (tab()) {
+        @case ('differences') {
+          <div class="row-between mb">
+            <span class="section-label">JSON diff (header + payload)</span>
+            <label class="check"
+              ><input
+                type="checkbox"
+                [checked]="showUnchanged()"
+                (change)="showUnchanged.set($any($event.target).checked)"
+              />
+              Show unchanged</label
+            >
+          </div>
+          <div class="table-wrap">
+            <table class="table diff">
+              <thead>
+                <tr>
+                  <th>Path</th>
+                  <th>Token A</th>
+                  <th>Token B</th>
+                  <th>Change</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (d of rows(); track d.section + d.path) {
+                  <tr class="k-{{ d.kind }}">
+                    <td class="mono">
+                      <span class="subtle">{{ d.section }}.</span>{{ d.path }}
+                    </td>
+                    <td class="mono val">{{ value(d.before) }}</td>
+                    <td class="mono val">{{ value(d.after) }}</td>
+                    <td>
+                      <span class="kind">{{ kindLabel(d.kind) }}</span>
+                    </td>
+                  </tr>
+                } @empty {
+                  <tr>
+                    <td colspan="4" class="muted">
+                      The tokens have identical headers and payloads.
+                    </td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        }
+        @case ('summary') {
+          <div class="summary-grid">
+            <div class="stack">
+              <span class="section-label">Smart summary</span>
+              <ul class="insights">
+                @for (s of r.summary; track s) {
+                  <li><ts-icon name="lightbulb" [size]="15" /> {{ s }}</li>
+                }
+              </ul>
+            </div>
+            <div class="stack">
+              <span class="section-label">Key fields</span>
+              <div class="table-wrap">
+                <table class="table">
+                  <thead>
+                    <tr>
+                      <th>Field</th>
+                      <th>A</th>
+                      <th>B</th>
+                      <th></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    @for (f of r.fields; track f.label) {
+                      <tr [class.k-modified]="!f.same">
+                        <td>{{ f.label }}</td>
+                        <td class="mono small val">{{ f.a }}</td>
+                        <td class="mono small val">{{ f.b }}</td>
+                        <td>
+                          <ts-icon
+                            [name]="f.same ? 'check' : 'x'"
+                            [size]="15"
+                            [class]="f.same ? 'ok' : 'bad'"
+                          />
+                        </td>
+                      </tr>
+                    }
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+          <div class="perm-grid">
+            @for (set of r.permissions; track set.label) {
+              <div class="perm">
+                <span class="section-label">{{ set.label }}</span>
+                <div class="chip-list">
+                  @for (v of set.both; track v) {
+                    <span class="chip">{{ v }}</span>
+                  }
+                  @for (v of set.onlyA; track v) {
+                    <span class="chip chip-missing" title="Only in Token A">A · {{ v }}</span>
+                  }
+                  @for (v of set.onlyB; track v) {
+                    <span class="chip chip-role" title="Only in Token B">B · {{ v }}</span>
+                  }
+                  @if (!set.both.length && !set.onlyA.length && !set.onlyB.length) {
+                    <span class="subtle small">none in either token</span>
+                  }
+                </div>
+              </div>
+            }
+          </div>
+        }
+        @case ('json') {
+          <div class="json-grid">
+            <div class="stack-sm">
+              <span class="token-tag a">Token A</span>
+              <ts-json-viewer [value]="a().header" label="Token A header" />
+              <ts-json-viewer [value]="a().payload" label="Token A payload" maxHeight="420px" />
+            </div>
+            <div class="stack-sm">
+              <span class="token-tag b">Token B</span>
+              <ts-json-viewer [value]="b().header" label="Token B header" />
+              <ts-json-viewer [value]="b().payload" label="Token B payload" maxHeight="420px" />
+            </div>
+          </div>
+        }
+      }
+    </div>
+  } @else {
+    <div class="empty">
+      <div class="empty-icon"><ts-icon name="compare" [size]="24" /></div>
+      <h3>Two decodable tokens are needed</h3>
+      <p>
+        Paste Token A and Token B, or load the demo with tokens that differ in roles, scopes, issuer
+        and expiration.
+      </p>
+      <button type="button" class="btn btn-primary" (click)="loadDemo()">
+        <ts-icon name="play" [size]="14" /> Load comparison demo
+      </button>
+    </div>
+  }
+</section>

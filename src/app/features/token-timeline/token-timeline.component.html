@@ -1,0 +1,195 @@
+<section class="page">
+  <header class="page-head">
+    <div>
+      <div class="page-title">
+        <ts-icon name="clock" [size]="24" />
+        <h1>Token Timeline</h1>
+      </div>
+      <p class="page-subtitle">
+        Visualize the validity window defined by iat, nbf and exp. Temporal validity is independent
+        from cryptographic validity.
+      </p>
+    </div>
+    <div class="row">
+      <div class="segmented" role="group" aria-label="Time zone">
+        @for (z of zones; track z.value) {
+          <button
+            type="button"
+            [class.active]="zone() === z.value"
+            [attr.aria-pressed]="zone() === z.value"
+            (click)="zone.set(z.value)"
+          >
+            {{ z.label }}
+          </button>
+        }
+      </div>
+    </div>
+  </header>
+
+  <div class="card stack">
+    <ts-token-input
+      [(value)]="workspace.token"
+      [rows]="3"
+      [sampleable]="true"
+      (sample)="loadSample()"
+    />
+    <div class="row-between">
+      <div class="field skew">
+        <label
+          for="skew"
+          tsTooltip="Tolerance applied to exp and nbf, like Spring Security's JwtTimestampValidator (default 60s)."
+          >Clock skew (seconds)</label
+        >
+        <input
+          id="skew"
+          class="input"
+          type="number"
+          min="0"
+          max="3600"
+          [value]="skew()"
+          (input)="setSkew($any($event.target).value)"
+        />
+      </div>
+      <ts-send-to [token]="workspace.token()" exclude="timeline" />
+    </div>
+  </div>
+
+  @if (result(); as r) {
+    <div class="state-card card state-{{ r.state }}">
+      <div class="state-icon"><ts-icon [name]="stateIcon[r.state]" [size]="30" /></div>
+      <div class="grow">
+        <div class="state-label">{{ stateLabel[r.state] }}</div>
+        <p class="muted">{{ stateDescription[r.state] }}</p>
+      </div>
+      @if (r.state === 'valid') {
+        <div class="countdown" aria-label="Time remaining">
+          <span class="section-label">Expires in</span>
+          <span class="count mono">{{ countdown(r.remainingSeconds) }}</span>
+        </div>
+      } @else if (r.state === 'expired') {
+        <div class="countdown">
+          <span class="section-label">Expired</span>
+          <span class="count mono">{{ duration(-(r.remainingSeconds ?? 0)) }} ago</span>
+        </div>
+      } @else if (r.state === 'not-yet-valid' && r.nbf) {
+        <div class="countdown">
+          <span class="section-label">Valid in</span>
+          <span class="count mono">{{ countdown((r.nbf - r.now) / 1000) }}</span>
+        </div>
+      }
+    </div>
+
+    <div class="card">
+      <div class="card-head">
+        <h2><ts-icon name="route" /> Validity window</h2>
+        @if (r.skewSeconds) {
+          <span class="badge badge-info">±{{ r.skewSeconds }}s skew applied</span>
+        }
+      </div>
+      <div class="track" role="img" [attr.aria-label]="'Timeline: ' + stateLabel[r.state]">
+        <div class="line"></div>
+        <div
+          class="line-fill"
+          [class.over]="r.state === 'expired'"
+          [style.width.%]="nowPosition()"
+        ></div>
+        @for (m of r.markers; track m.key) {
+          <div class="marker marker-{{ m.key }}" [style.left.%]="m.position">
+            <div class="label-top">
+              <span class="m-label">{{ m.label }}</span>
+              <span class="m-time mono">{{ time(m.time) }}</span>
+            </div>
+            <div class="pin"></div>
+          </div>
+        }
+      </div>
+
+      <div class="stats">
+        <div class="stat">
+          <span class="section-label">Total duration</span>
+          <strong>{{ duration(r.totalSeconds) }}</strong>
+        </div>
+        <div class="stat">
+          <span class="section-label">Elapsed</span>
+          <strong>{{ duration(r.elapsedSeconds) }}</strong>
+        </div>
+        <div class="stat">
+          <span class="section-label">Time remaining</span>
+          <strong>{{
+            r.remainingSeconds !== null && r.remainingSeconds > 0
+              ? duration(r.remainingSeconds)
+              : r.exp === null
+                ? 'Never expires'
+                : 'None'
+          }}</strong>
+        </div>
+        <div class="stat">
+          <span class="section-label">Lifetime used</span>
+          <strong>{{ r.progress !== null ? (r.progress * 100).toFixed(0) + '%' : '—' }}</strong>
+          @if (r.progress !== null) {
+            <div class="progress"><span [style.width.%]="r.progress * 100"></span></div>
+          }
+        </div>
+      </div>
+    </div>
+
+    @if (r.issues.length) {
+      <div class="stack-sm">
+        @for (issue of r.issues; track issue) {
+          <div class="alert alert-warning">
+            <ts-icon name="alert" [size]="16" /> <span>{{ issue }}</span>
+          </div>
+        }
+      </div>
+    }
+
+    <div class="card">
+      <div class="card-head">
+        <h2><ts-icon name="file" /> Timeline details</h2>
+      </div>
+      <div class="table-wrap">
+        <table class="table">
+          <thead>
+            <tr>
+              <th>Event</th>
+              <th>{{ zone() === 'local' ? 'Local time' : zone() }}</th>
+              <th>ISO 8601 (UTC)</th>
+              <th>NumericDate</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (row of rows(); track row.key) {
+              <tr [class.now-row]="row.key === 'now'">
+                <td>{{ row.label }}</td>
+                <td class="mono">{{ row.formatted }}</td>
+                <td class="mono subtle">{{ row.iso }}</td>
+                <td class="mono subtle">{{ row.epoch }}</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+      <div class="alert alert-info note">
+        <ts-icon name="info" [size]="16" />
+        <span
+          >A token inside its validity window can still be rejected: the signature, issuer, audience
+          and authorization rules are checked separately.</span
+        >
+      </div>
+    </div>
+  } @else if (workspace.token()) {
+    <div class="alert alert-danger">
+      <ts-icon name="circle-x" [size]="16" /> The token payload could not be decoded. Open the JWT
+      Inspector for structural details.
+    </div>
+  } @else {
+    <div class="empty">
+      <div class="empty-icon"><ts-icon name="clock" [size]="24" /></div>
+      <h3>No token loaded</h3>
+      <p>Paste a JWT or load an example to see its validity window and a live countdown.</p>
+      <button type="button" class="btn btn-primary" (click)="loadSample()">
+        <ts-icon name="play" [size]="14" /> Load example token
+      </button>
+    </div>
+  }
+</section>

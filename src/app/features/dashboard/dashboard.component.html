@@ -1,0 +1,156 @@
+<section class="page">
+  <div class="intro">
+    <h1>TokenScope</h1>
+    <p class="muted">
+      Inspect, analyze, compare, generate and troubleshoot JWT tokens — entirely in your browser.
+    </p>
+  </div>
+
+  <div class="hero">
+    <div class="hero-main">
+      <div class="hero-tag">
+        <ts-icon name="stethoscope" [size]="15" /> Authentication Troubleshooter
+      </div>
+      <h2 class="hero-title">Diagnose JWT Authentication &amp; Authorization Issues</h2>
+      <p class="hero-desc">
+        Paste the token from a failing request and get a step-by-step diagnosis of HTTP 401 and 403
+        errors — signature, expiration, issuer, audience, authority mapping and Spring Security
+        rules, each with evidence and recommendations.
+      </p>
+      <div class="quick">
+        <label for="quick" class="sr-only">JWT token</label>
+        <textarea
+          id="quick"
+          class="textarea"
+          rows="2"
+          spellcheck="false"
+          [attr.maxlength]="maxLength"
+          placeholder="Paste your JWT here…"
+          [value]="quickToken()"
+          (input)="quickToken.set($any($event.target).value)"
+        ></textarea>
+        <div class="quick-actions">
+          <button type="button" class="btn btn-gradient btn-lg" (click)="analyze()">
+            <ts-icon name="stethoscope" [size]="17" /> Analyze Token
+          </button>
+          <button type="button" class="btn btn-lg" [disabled]="loadingDemo()" (click)="tryDemo()">
+            @if (loadingDemo()) {
+              <span class="spinner"></span>
+            } @else {
+              <ts-icon name="play" [size]="15" />
+            }
+            Try Authentication Demo
+          </button>
+        </div>
+      </div>
+      <div class="indicators" aria-live="polite">
+        @if (indicators(); as ind) {
+          <span class="ind" [class.ok]="ind.structure.ok" [class.bad]="!ind.structure.ok"
+            ><ts-icon [name]="ind.structure.ok ? 'circle-check' : 'circle-x'" [size]="14" />
+            {{ ind.structure.label }}</span
+          >
+          @if (ind.alg) {
+            <span class="ind"><ts-icon name="key" [size]="14" /> {{ ind.alg }}</span>
+          }
+          @if (ind.temporal; as t) {
+            <span class="ind" [class.ok]="t.ok" [class.bad]="!t.ok"
+              ><ts-icon name="clock" [size]="14" /> {{ t.label }}</span
+            >
+          }
+          <span class="ind"><ts-icon name="circle-help" [size]="14" /> Signature not verified</span>
+        } @else {
+          <span class="ind"
+            ><ts-icon name="lock" [size]="14" /> Your tokens are processed locally in your
+            browser.</span
+          >
+          <span class="ind"><ts-icon name="route" [size]="14" /> 10-step diagnostic pipeline</span>
+          <span class="ind"><ts-icon name="server" [size]="14" /> Spring Security aware</span>
+        }
+      </div>
+    </div>
+
+    <button
+      type="button"
+      class="preview"
+      (click)="tryDemo()"
+      aria-label="Open the HTTP 403 missing role demonstration"
+    >
+      <div class="preview-head">
+        <div>
+          <strong>Authentication Troubleshooter</strong>
+          <div class="mono tiny muted">GET /api/admin/users</div>
+        </div>
+        <span class="pill">403 Forbidden</span>
+      </div>
+      <ul class="preview-steps">
+        @for (s of previewSteps; track s.title) {
+          <li class="ps-{{ s.status }}">
+            <ts-icon
+              [name]="
+                s.status === 'passed'
+                  ? 'circle-check'
+                  : s.status === 'failed'
+                    ? 'circle-x'
+                    : 'circle-help'
+              "
+              [size]="15"
+            />
+            <span class="grow">{{ s.title }}</span>
+            <span class="ps-label">{{
+              s.status === 'passed' ? 'Passed' : s.status === 'failed' ? 'Failed' : 'Not verified'
+            }}</span>
+          </li>
+        }
+      </ul>
+      <div class="preview-diag">
+        <strong><ts-icon name="alert" [size]="15" /> Missing required authority</strong>
+        <div class="kvs small">
+          <span>Token Role: <b class="mono">ROLE_USER</b></span>
+          <span>Required Role: <b class="mono">ROLE_ADMIN</b></span>
+        </div>
+        <span class="tiny muted"
+          >Suggested action: review JwtGrantedAuthoritiesConverter and endpoint authorization
+          rules.</span
+        >
+      </div>
+      <span class="preview-cta"
+        >Open the full scenario <ts-icon name="arrow-right" [size]="14"
+      /></span>
+    </button>
+  </div>
+
+  <div class="tools">
+    @for (tool of tools; track tool.path) {
+      <button type="button" class="card tool" (click)="open(tool.path)">
+        <span class="tool-icon"><ts-icon [name]="tool.icon" [size]="20" /></span>
+        <span class="tool-title">{{ tool.title }}</span>
+        <span class="tool-desc">{{ tool.description }}</span>
+        <span class="tool-action"
+          >{{ tool.action }} <ts-icon name="arrow-right" [size]="13"
+        /></span>
+      </button>
+    }
+    <a routerLink="/demos" class="card tool demo-tool">
+      <span class="tool-icon"><ts-icon name="flask" [size]="20" /></span>
+      <span class="tool-title">Demo Playground</span>
+      <span class="tool-desc"
+        >Seven ready-to-run scenarios: valid, expired, 403 missing role/scope, invalid signature,
+        comparison and Spring mapping.</span
+      >
+      <span class="tool-action">Browse demos <ts-icon name="arrow-right" [size]="13" /></span>
+    </a>
+  </div>
+
+  <div class="card privacy">
+    <ts-icon name="shield-check" [size]="22" />
+    <div>
+      <strong>Your tokens are processed locally in your browser.</strong>
+      <p class="small muted">
+        Nothing is uploaded, logged or persisted. Decoding, analysis, signing and verification use
+        the Web Crypto API. The only optional network call is a JWKS download you trigger yourself —
+        a plain GET that never includes the JWT. Use "Clear session data" in the header to wipe
+        memory.
+      </p>
+    </div>
+  </div>
+</section>

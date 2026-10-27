@@ -1,0 +1,123 @@
+.pair {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  gap: 12px;
+  align-items: center;
+}
+.side-a {
+  border-top: 3px solid var(--jwt-header);
+}
+.side-b {
+  border-top: 3px solid var(--accent-2);
+}
+.token-tag {
+  font-weight: 700;
+  font-size: 0.85rem;
+  &.a {
+    color: var(--jwt-header);
+  }
+  &.b {
+    color: var(--accent-2);
+  }
+}
+.mb {
+  margin-bottom: 10px;
+}
+.diff {
+  .val {
+    max-width: 320px;
+    word-break: break-word;
+    font-size: 0.78rem;
+  }
+}
+.kind {
+  font-size: 0.74rem;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--neutral-soft);
+  color: var(--neutral);
+}
+.k-added td {
+  background: var(--success-soft);
+  .kind {
+    color: var(--success);
+    background: transparent;
+  }
+}
+.k-removed td {
+  background: var(--danger-soft);
+  .kind {
+    color: var(--danger);
+    background: transparent;
+  }
+}
+.k-modified td {
+  background: var(--warning-soft);
+  .kind {
+    color: var(--warning);
+    background: transparent;
+  }
+}
+.summary-grid,
+.json-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 16px;
+}
+.insights {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  li {
+    display: flex;
+    gap: 8px;
+    padding: 9px 12px;
+    border-radius: var(--radius);
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    ts-icon {
+      color: var(--warning);
+      margin-top: 2px;
+    }
+  }
+}
+.val {
+  word-break: break-word;
+}
+.ok {
+  color: var(--success);
+}
+.bad {
+  color: var(--danger);
+}
+.perm-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 16px;
+}
+.perm {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+}
+@media (max-width: 960px) {
+  .pair,
+  .summary-grid,
+  .json-grid,
+  .perm-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .swap {
+    justify-self: center;
+    transform: rotate(90deg);
+  }
+}

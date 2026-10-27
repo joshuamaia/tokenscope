@@ -1,0 +1,95 @@
+<div class="pipeline-head row-between">
+  <div>
+    <h2><ts-icon name="route" /> Diagnostic pipeline</h2>
+    <p class="card-sub">
+      Click any step to see what was analyzed, the evidence and recommendations.
+    </p>
+  </div>
+  <div class="row">
+    <button type="button" class="btn btn-ghost btn-sm" (click)="expandAll(true)">Expand all</button>
+    <button type="button" class="btn btn-ghost btn-sm" (click)="expandAll(false)">Collapse</button>
+  </div>
+</div>
+
+<ol class="pipeline">
+  @for (step of steps(); track step.id; let last = $last) {
+    <li
+      class="step st-{{ step.status }}"
+      [class.open]="expanded().has(step.id)"
+      [class.final]="step.id === 'final'"
+      [style.animation-delay.ms]="step.index * 55"
+    >
+      <div class="rail" aria-hidden="true">
+        <span class="node"><ts-icon [name]="icon[step.status]" [size]="18" /></span>
+        @if (!last) {
+          <span class="connector"></span>
+        }
+      </div>
+      <div class="body">
+        <button
+          type="button"
+          class="step-head"
+          [attr.aria-expanded]="expanded().has(step.id)"
+          [attr.aria-controls]="'step-' + step.id"
+          (click)="toggle(step.id)"
+        >
+          <span class="idx mono">{{ step.index.toString().padStart(2, '0') }}</span>
+          <span class="titles">
+            <span class="title">{{ step.title }}</span>
+            <span class="summary">{{ step.summary }}</span>
+          </span>
+          <span class="status-label">{{ label[step.status] }}</span>
+          <ts-icon class="chev" name="chevron-down" [size]="16" />
+        </button>
+
+        @if (expanded().has(step.id)) {
+          <div class="details" [id]="'step-' + step.id">
+            <div class="detail-block">
+              <span class="section-label">What was analyzed</span>
+              <p>{{ step.analyzed }}</p>
+            </div>
+            @if (step.data.length) {
+              <div class="detail-block">
+                <span class="section-label">Data used</span>
+                <dl class="kv">
+                  @for (d of step.data; track d.label) {
+                    <dt>{{ d.label }}</dt>
+                    <dd class="mono">{{ d.value }}</dd>
+                  }
+                </dl>
+              </div>
+            }
+            <div class="detail-block">
+              <span class="section-label">Result &amp; evidence</span>
+              <ul class="evidence">
+                @for (e of step.evidence; track $index) {
+                  <li>{{ e }}</li>
+                }
+              </ul>
+            </div>
+            @if (step.impact) {
+              <div class="detail-block impact">
+                <span class="section-label">Possible impact</span>
+                <p>{{ step.impact }}</p>
+              </div>
+            }
+            <div class="detail-block">
+              <span class="section-label">Technical explanation</span>
+              <p class="muted">{{ step.explanation }}</p>
+            </div>
+            @if (step.recommendations.length) {
+              <div class="detail-block">
+                <span class="section-label">Recommendations</span>
+                <ul class="recs">
+                  @for (r of step.recommendations; track r) {
+                    <li><ts-icon name="lightbulb" [size]="14" /> {{ r }}</li>
+                  }
+                </ul>
+              </div>
+            }
+          </div>
+        }
+      </div>
+    </li>
+  }
+</ol>

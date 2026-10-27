@@ -1,0 +1,121 @@
+:host {
+  display: block;
+}
+.mt {
+  margin-top: 10px;
+}
+.flow {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.flow-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1.2fr) auto minmax(0, 1.4fr);
+  gap: 10px;
+  align-items: center;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface-2);
+}
+.flow-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  min-width: 0;
+  .mono {
+    word-break: break-all;
+  }
+}
+.arrow {
+  color: var(--text-subtle);
+}
+.result-box {
+  margin-top: 12px;
+  padding: 12px;
+  border-radius: var(--radius);
+  border: 1px solid color-mix(in srgb, var(--accent) 40%, var(--border));
+  background: var(--accent-soft);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.examples {
+  gap: 4px;
+  .btn {
+    font-size: 0.74rem;
+  }
+}
+.interp {
+  border-left: 3px solid var(--accent);
+  padding: 6px 12px;
+  background: var(--surface-2);
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+}
+.decision {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  border-radius: var(--radius);
+  background: var(--danger-soft);
+  color: var(--danger);
+  border: 1px solid color-mix(in srgb, var(--danger) 40%, transparent);
+  &.granted {
+    background: var(--success-soft);
+    color: var(--success);
+    border-color: color-mix(in srgb, var(--success) 40%, transparent);
+  }
+  .muted {
+    color: var(--text-muted);
+  }
+}
+.near td {
+  background: var(--warning-soft);
+  color: var(--warning);
+}
+.concepts {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.concept {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+  button {
+    width: 100%;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 12px;
+    background: var(--surface-2);
+    border: 0;
+    color: var(--text);
+    font: inherit;
+    font-weight: 600;
+    cursor: pointer;
+    text-align: left;
+  }
+  &.open button ts-icon {
+    transform: rotate(180deg);
+  }
+}
+.concept-body {
+  padding: 10px 14px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  color: var(--text-muted);
+  font-size: 0.87rem;
+}
+@media (max-width: 760px) {
+  .flow-row {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .arrow {
+    transform: rotate(90deg);
+    justify-self: center;
+  }
+}

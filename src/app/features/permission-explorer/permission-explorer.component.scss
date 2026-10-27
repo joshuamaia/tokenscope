@@ -1,0 +1,112 @@
+.top-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
+  gap: 16px;
+}
+h3 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.select-sm {
+  width: auto;
+  height: 30px;
+  font-size: 0.78rem;
+  padding: 0 26px 0 8px;
+}
+.perm-card {
+  border-top: 3px solid var(--c);
+  h3 ts-icon {
+    color: var(--c);
+  }
+}
+.roles {
+  --c: var(--success);
+}
+.scopes {
+  --c: var(--info);
+}
+.auths {
+  --c: var(--accent);
+}
+.sim-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.5fr) minmax(320px, 1fr);
+  gap: 16px;
+  align-items: start;
+}
+.nowrap {
+  white-space: nowrap;
+}
+.method {
+  font-weight: 700;
+  font-size: 0.7rem;
+  padding: 1px 6px;
+  border-radius: 4px;
+  margin-right: 4px;
+  background: var(--neutral-soft);
+}
+.m-GET {
+  color: var(--success);
+  background: var(--success-soft);
+}
+.m-POST {
+  color: var(--warning);
+  background: var(--warning-soft);
+}
+.m-PUT,
+.m-PATCH {
+  color: var(--info);
+  background: var(--info-soft);
+}
+.m-DELETE {
+  color: var(--danger);
+  background: var(--danger-soft);
+}
+.add-rule {
+  display: grid;
+  grid-template-columns: 100px minmax(0, 1fr) minmax(0, 1.4fr) auto;
+  gap: 8px;
+  margin-top: 12px;
+}
+.method-row {
+  display: flex;
+  gap: 10px;
+  .field:first-child {
+    width: 110px;
+  }
+}
+.expr {
+  padding: 8px 10px;
+  border-radius: var(--radius-sm);
+  background: var(--code-bg);
+  border: 1px dashed var(--border-strong);
+  color: var(--code-string);
+  word-break: break-word;
+}
+.decision {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  border-radius: var(--radius);
+  background: var(--danger-soft);
+  color: var(--danger);
+  border: 1px solid color-mix(in srgb, var(--danger) 40%, transparent);
+  &.granted {
+    background: var(--success-soft);
+    color: var(--success);
+    border-color: color-mix(in srgb, var(--success) 40%, transparent);
+  }
+}
+@media (max-width: 1100px) {
+  .top-grid,
+  .sim-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+@media (max-width: 640px) {
+  .add-rule {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

@@ -1,0 +1,60 @@
+.gen-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 16px;
+  align-items: start;
+}
+.card-head {
+  margin-bottom: 0;
+}
+.inline {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.small-input {
+  width: 110px;
+}
+.select-sm {
+  width: auto;
+  height: 30px;
+  font-size: 0.78rem;
+  padding: 0 26px 0 8px;
+}
+.toggles {
+  gap: 16px;
+}
+.output {
+  border-top: 3px solid var(--success);
+  animation: pop-in 0.3s ease;
+}
+.token-out {
+  word-break: break-all;
+  font-size: 0.78rem;
+  line-height: 1.6;
+  background: var(--code-bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 12px;
+  max-height: 200px;
+  overflow: auto;
+}
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 12px;
+  .primary {
+    border-color: var(--accent);
+    color: var(--accent-strong);
+  }
+}
+.key {
+  max-height: 180px;
+  font-size: 0.72rem;
+}
+@media (max-width: 1100px) {
+  .gen-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

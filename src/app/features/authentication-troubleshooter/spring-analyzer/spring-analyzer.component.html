@@ -1,0 +1,269 @@
+<div class="card-head">
+  <div>
+    <h2><ts-icon name="server" /> Spring Security Analyzer</h2>
+    <p class="card-sub">
+      Live simulation of JwtGrantedAuthoritiesConverter and endpoint rules — updates as you edit the
+      form.
+    </p>
+  </div>
+  <span class="badge badge-accent">Simulation</span>
+</div>
+
+<div class="tabs" role="tablist">
+  <button
+    type="button"
+    role="tab"
+    [class.active]="tab() === 'mapping'"
+    (click)="tab.set('mapping')"
+  >
+    <ts-icon name="layers" [size]="14" /> Authority mapping
+  </button>
+  <button type="button" role="tab" [class.active]="tab() === 'rule'" (click)="tab.set('rule')">
+    <ts-icon name="target" [size]="14" /> Rule evaluator
+  </button>
+  <button type="button" role="tab" [class.active]="tab() === 'java'" (click)="tab.set('java')">
+    <ts-icon name="terminal" [size]="14" /> Java config
+  </button>
+  <button
+    type="button"
+    role="tab"
+    [class.active]="tab() === 'concepts'"
+    (click)="tab.set('concepts')"
+  >
+    <ts-icon name="lightbulb" [size]="14" /> Concepts
+  </button>
+</div>
+
+@switch (tab()) {
+  @case ('mapping') {
+    @if (!payload()) {
+      <p class="muted">Paste a decodable token to simulate the authority mapping.</p>
+    } @else {
+      <div class="flow">
+        @for (t of mapping().traces; track $index) {
+          <div class="flow-row">
+            <div class="flow-cell">
+              <span class="section-label">Claim</span>
+              <span class="mono">{{ t.rule.claim }}</span>
+              <span class="tiny subtle">{{
+                t.claimUsed ? 'used: ' + t.claimUsed : 'not found'
+              }}</span>
+            </div>
+            <ts-icon name="arrow-right" [size]="16" class="arrow" />
+            <div class="flow-cell">
+              <span class="section-label">Raw values</span>
+              <div class="chip-list">
+                @for (v of t.rawValues; track v) {
+                  <span class="chip">{{ v }}</span>
+                } @empty {
+                  <span class="subtle small">—</span>
+                }
+              </div>
+            </div>
+            <ts-icon name="arrow-right" [size]="16" class="arrow" />
+            <div class="flow-cell">
+              <span class="section-label"
+                >Prefix "{{ t.rule.prefix }}" · delimiter "{{
+                  t.rule.delimiter === ' ' ? 'space' : t.rule.delimiter
+                }}"</span
+              >
+              <div class="chip-list">
+                @for (a of t.mapped; track a) {
+                  <span class="chip chip-authority">{{ a }}</span>
+                } @empty {
+                  <span class="subtle small">no authorities</span>
+                }
+              </div>
+            </div>
+          </div>
+        } @empty {
+          <div class="alert alert-warning">
+            <ts-icon name="alert" [size]="16" />
+            <span>No converter configured: the authentication would have no authorities.</span>
+          </div>
+        }
+      </div>
+
+      <div class="result-box">
+        <span class="section-label">Resulting GrantedAuthorities</span>
+        <div class="chip-list">
+          @for (a of mapping().authorities; track a) {
+            <span
+              class="chip"
+              [class.chip-role]="a.startsWith('ROLE_')"
+              [class.chip-scope]="a.startsWith('SCOPE_')"
+              [class.chip-authority]="!a.startsWith('ROLE_') && !a.startsWith('SCOPE_')"
+              >{{ a }}</span
+            >
+          } @empty {
+            <span class="subtle small">none</span>
+          }
+        </div>
+      </div>
+
+      @for (u of unmapped(); track u.path) {
+        <div class="alert alert-warning mt">
+          <ts-icon name="alert" [size]="16" />
+          <span
+            >Claim <strong class="mono">{{ u.path }}</strong> =
+            <span class="mono">{{ u.values.join(', ') }}</span> is present but no converter reads
+            it. Rules such as hasRole cannot see these values.</span
+          >
+        </div>
+      }
+    }
+  }
+
+  @case ('rule') {
+    <div class="stack">
+      <div class="field">
+        <label for="spel">Authorization expression</label>
+        <input
+          id="spel"
+          class="input mono-input"
+          [value]="playground()"
+          (input)="playground.set($any($event.target).value)"
+          placeholder="hasRole('ADMIN')"
+          spellcheck="false"
+        />
+        <div class="row examples">
+          @for (ex of examples; track ex) {
+            <button type="button" class="btn btn-ghost btn-sm mono" (click)="playground.set(ex)">
+              {{ ex }}
+            </button>
+          }
+        </div>
+      </div>
+
+      @if (interpretation().length) {
+        <div class="interp">
+          @for (line of interpretation(); track $index) {
+            <div class="mono small">{{ line }}</div>
+          }
+        </div>
+      }
+
+      @if (evaluation().parseError && playground().trim()) {
+        <div class="alert alert-danger">
+          <ts-icon name="circle-x" [size]="16" /> <span>{{ evaluation().parseError }}</span>
+        </div>
+      } @else if (evaluation().parsed) {
+        <div class="decision" [class.granted]="evaluation().granted">
+          <ts-icon [name]="evaluation().granted ? 'shield-check' : 'shield-alert'" [size]="22" />
+          <div>
+            <strong>{{
+              evaluation().granted ? 'Access Granted — Simulated' : 'Access Denied — Simulated'
+            }}</strong>
+            <div class="small muted">
+              Against {{ mapping().authorities.length }} mapped authorities, exact case-sensitive
+              comparison.
+            </div>
+          </div>
+        </div>
+        <div class="table-wrap">
+          <table class="table">
+            <thead>
+              <tr>
+                <th>Check</th>
+                <th>Required</th>
+                <th>Matched</th>
+                <th>Result</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (c of evaluation().checks; track $index) {
+                <tr>
+                  <td class="mono small">{{ c.expression }}</td>
+                  <td>
+                    <div class="chip-list">
+                      @for (r of c.required; track r) {
+                        <span class="chip" [class.chip-missing]="c.missing.includes(r)">{{
+                          r
+                        }}</span>
+                      }
+                    </div>
+                  </td>
+                  <td class="mono small">{{ c.matched.join(', ') || '—' }}</td>
+                  <td>
+                    <span
+                      class="badge"
+                      [class.badge-success]="c.result"
+                      [class.badge-danger]="!c.result"
+                      >{{ c.result ? 'Satisfied' : 'Not satisfied' }}</span
+                    >
+                  </td>
+                </tr>
+                @for (n of c.nearMatches; track n.found) {
+                  <tr class="near">
+                    <td colspan="4" class="small">
+                      <ts-icon name="alert" [size]="13" /> Near match: token has
+                      <span class="mono">{{ n.found }}</span
+                      >, rule needs <span class="mono">{{ n.required }}</span> —
+                      {{
+                        n.reason === 'role-prefix'
+                          ? 'ROLE_ prefix mismatch'
+                          : n.reason === 'scope-prefix'
+                            ? 'SCOPE_ prefix mismatch'
+                            : n.reason === 'case'
+                              ? 'case mismatch'
+                              : 'prefix mismatch'
+                      }}.
+                    </td>
+                  </tr>
+                }
+              }
+            </tbody>
+          </table>
+        </div>
+        @for (w of evaluation().warnings; track w) {
+          <div class="alert alert-warning">
+            <ts-icon name="alert" [size]="16" /> <span>{{ w }}</span>
+          </div>
+        }
+      }
+    </div>
+  }
+
+  @case ('java') {
+    <div class="stack">
+      <div class="row-between">
+        <span class="section-label">Authority mapping equivalent</span>
+        <ts-copy-button [text]="javaConfig()" label="Copy" />
+      </div>
+      <pre class="code-block">{{ javaConfig() }}</pre>
+      <div class="row-between">
+        <span class="section-label">Endpoint rule equivalent</span>
+        <ts-copy-button [text]="chainConfig()" label="Copy" />
+      </div>
+      <pre class="code-block">{{ chainConfig() }}</pre>
+      <p class="tiny subtle">
+        Generated from the current simulation for reference — review it against your actual security
+        configuration.
+      </p>
+    </div>
+  }
+
+  @case ('concepts') {
+    <div class="concepts">
+      @for (c of concepts; track c.title; let i = $index) {
+        <div class="concept" [class.open]="openConcept() === i">
+          <button
+            type="button"
+            [attr.aria-expanded]="openConcept() === i"
+            (click)="openConcept.set(openConcept() === i ? null : i)"
+          >
+            <span>{{ c.title }}</span>
+            <ts-icon name="chevron-down" [size]="15" />
+          </button>
+          @if (openConcept() === i) {
+            <div class="concept-body">
+              @for (p of c.body; track $index) {
+                <p>{{ p }}</p>
+              }
+            </div>
+          }
+        </div>
+      }
+    </div>
+  }
+}

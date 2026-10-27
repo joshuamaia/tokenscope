@@ -1,0 +1,333 @@
+.title-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  display: grid;
+  place-items: center;
+  color: #fff;
+  background: var(--gradient);
+  box-shadow: 0 8px 22px rgba(124, 108, 255, 0.35);
+}
+.demo-row {
+  gap: 6px;
+}
+.preset .btn {
+  margin-left: auto;
+}
+
+.layout {
+  display: grid;
+  grid-template-columns: minmax(340px, 420px) minmax(0, 1fr);
+  gap: 18px;
+  align-items: start;
+}
+@media (max-width: 1180px) {
+  .layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* ---------- form ---------- */
+.form-card {
+  position: sticky;
+  top: calc(var(--header-height) + 16px);
+  max-height: calc(100dvh - var(--header-height) - 32px);
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  @media (max-width: 1180px) {
+    position: static;
+    max-height: none;
+  }
+}
+fieldset {
+  border: 0;
+  margin: 0;
+  padding: 0 0 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  & + fieldset {
+    border-top: 1px solid var(--border);
+    padding-top: 14px;
+  }
+}
+legend {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 650;
+  padding: 0;
+  margin-bottom: 10px;
+  float: left;
+  width: 100%;
+  + * {
+    clear: both;
+  }
+}
+.step-num {
+  width: 20px;
+  height: 20px;
+  border-radius: 6px;
+  display: grid;
+  place-items: center;
+  font-size: 0.72rem;
+  background: var(--accent-soft);
+  color: var(--accent-strong);
+}
+.opt {
+  font-size: 0.7rem;
+  font-weight: 500;
+  color: var(--text-subtle);
+}
+.segmented.full {
+  display: flex;
+  button {
+    flex: 1;
+    justify-content: center;
+  }
+}
+.method-row {
+  display: flex;
+  gap: 10px;
+  .field:first-child {
+    width: 112px;
+  }
+}
+.expr {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px 10px;
+  border-radius: var(--radius-sm);
+  background: var(--code-bg);
+  border: 1px dashed var(--border-strong);
+  code {
+    color: var(--code-string);
+    word-break: break-word;
+  }
+}
+.link-btn {
+  border: 0;
+  background: none;
+  color: var(--accent-strong);
+  font: inherit;
+  font-size: 0.78rem;
+  cursor: pointer;
+  padding: 0;
+  align-self: flex-start;
+}
+.rules {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.rules-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+.select-sm {
+  width: auto;
+  height: 30px;
+  font-size: 0.78rem;
+  padding: 0 26px 0 8px;
+}
+.rule {
+  display: grid;
+  grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr) 46px 36px;
+  gap: 6px;
+  .input {
+    height: 34px;
+  }
+}
+.delim {
+  text-align: center;
+  padding: 0 4px;
+}
+.run {
+  margin-top: 6px;
+  position: sticky;
+  bottom: 0;
+}
+
+/* ---------- headline ---------- */
+.headline {
+  border-top: 4px solid var(--tone);
+  background: linear-gradient(
+    160deg,
+    color-mix(in srgb, var(--tone) 11%, var(--surface)) 0%,
+    var(--surface) 55%
+  );
+  animation: pop-in 0.35s ease;
+}
+.tone-danger {
+  --tone: var(--danger);
+}
+.tone-warning {
+  --tone: var(--warning);
+}
+.tone-success {
+  --tone: var(--success);
+}
+.tone-neutral {
+  --tone: var(--neutral);
+}
+.headline-top {
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+  flex-wrap: wrap;
+}
+.headline-icon {
+  width: 58px;
+  height: 58px;
+  border-radius: 16px;
+  display: grid;
+  place-items: center;
+  color: var(--tone);
+  background: color-mix(in srgb, var(--tone) 15%, transparent);
+  flex-shrink: 0;
+}
+.request {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+.status-pill {
+  font-size: 0.74rem;
+  font-weight: 700;
+  padding: 2px 10px;
+  border-radius: 999px;
+  color: var(--danger);
+  background: var(--danger-soft);
+  &.s401 {
+    color: var(--warning);
+    background: var(--warning-soft);
+  }
+}
+.headline-title {
+  font-size: 1.35rem;
+  margin: 4px 0 4px;
+  color: var(--tone);
+}
+.headline-desc {
+  color: var(--text);
+}
+.decision-badge {
+  align-self: flex-start;
+  font-size: 0.8rem;
+  font-weight: 700;
+  padding: 6px 12px;
+  border-radius: var(--radius);
+  border: 1px solid color-mix(in srgb, var(--tone) 50%, transparent);
+  color: var(--tone);
+  background: color-mix(in srgb, var(--tone) 10%, transparent);
+  white-space: nowrap;
+}
+.counts {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 16px;
+}
+.count {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 8px 4px;
+  border-radius: var(--radius);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  strong {
+    font-size: 1.35rem;
+    color: var(--c);
+  }
+  span {
+    font-size: 0.72rem;
+    color: var(--text-muted);
+  }
+}
+.c-pass {
+  --c: var(--success);
+}
+.c-fail {
+  --c: var(--danger);
+}
+.c-warn {
+  --c: var(--warning);
+}
+.c-nv {
+  --c: var(--info);
+}
+.c-na {
+  --c: var(--text-subtle);
+}
+.note {
+  margin-top: 12px;
+}
+.disclaimer {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 12px;
+  font-size: 0.75rem;
+  color: var(--text-subtle);
+}
+
+/* ---------- intro ---------- */
+.intro {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  background: var(--gradient-danger), var(--surface);
+}
+.intro-head {
+  display: flex;
+  gap: 14px;
+  align-items: center;
+  .empty-icon {
+    width: 52px;
+    height: 52px;
+    border-radius: 14px;
+    display: grid;
+    place-items: center;
+    background: var(--accent-soft);
+    color: var(--accent-strong);
+    flex-shrink: 0;
+  }
+}
+.preview {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+  li {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 12px;
+    border-radius: var(--radius);
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    font-size: 0.86rem;
+    ts-icon {
+      margin-left: auto;
+    }
+  }
+}
+.pnum {
+  color: var(--text-subtle);
+  font-size: 0.74rem;
+}
+@media (max-width: 640px) {
+  .counts {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  .preview {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

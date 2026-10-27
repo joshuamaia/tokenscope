@@ -1,0 +1,263 @@
+<section class="page">
+  <header class="page-head">
+    <div>
+      <div class="page-title">
+        <ts-icon name="inspect" [size]="24" />
+        <h1>JWT Inspector</h1>
+      </div>
+      <p class="page-subtitle">
+        Decode and interpret header, payload and signature. Decoding is not verification — the
+        signature is checked only in the Signature Verifier.
+      </p>
+    </div>
+  </header>
+
+  <div class="card stack">
+    <ts-token-input
+      [(value)]="workspace.token"
+      [showSegments]="true"
+      [sampleable]="true"
+      (sample)="loadSample()"
+      [rows]="4"
+    />
+    <div class="row-between">
+      <div class="legend row tiny">
+        <span class="jwt-h">● Header</span>
+        <span class="jwt-p">● Payload</span>
+        <span class="jwt-s">● Signature</span>
+      </div>
+      <ts-send-to [token]="workspace.token()" exclude="inspector" />
+    </div>
+  </div>
+
+  @if (hasInput() && decoded().issues.length) {
+    <div class="stack-sm" aria-label="Structural validation">
+      @for (issue of decoded().issues; track issue.code) {
+        <div
+          class="alert"
+          [class.alert-danger]="issue.severity === 'error'"
+          [class.alert-warning]="issue.severity === 'warning'"
+          [class.alert-info]="issue.severity === 'info'"
+        >
+          <ts-icon
+            [name]="
+              issue.severity === 'error'
+                ? 'circle-x'
+                : issue.severity === 'warning'
+                  ? 'alert'
+                  : 'info'
+            "
+            [size]="16"
+          />
+          <div>
+            <strong class="capitalize">{{ issue.segment }}</strong> — {{ issue.message }}
+          </div>
+        </div>
+      }
+    </div>
+  }
+
+  @if (!hasInput()) {
+    <div class="empty">
+      <div class="empty-icon"><ts-icon name="inspect" [size]="24" /></div>
+      <h3>Paste a JWT to start</h3>
+      <p>
+        Header, payload and every claim are interpreted locally, with explanations for registered
+        and permission claims.
+      </p>
+      <button type="button" class="btn btn-primary" (click)="loadSample()">
+        <ts-icon name="play" [size]="14" /> Load example token
+      </button>
+    </div>
+  } @else if (decoded().kind === 'jwe') {
+    <div class="card stack">
+      <h2><ts-icon name="lock" /> Encrypted token (JWE)</h2>
+      <p class="muted">
+        Only the protected header can be read. The payload is encrypted and is not interpreted as
+        JWS.
+      </p>
+      @if (decoded().header) {
+        <ts-json-viewer [value]="decoded().header" label="JWE protected header" />
+      }
+    </div>
+  } @else if (decoded().decoded) {
+    <div class="inspector-grid">
+      <div class="card">
+        <div class="tabs" role="tablist">
+          <button
+            type="button"
+            role="tab"
+            [class.active]="tab() === 'payload'"
+            [attr.aria-selected]="tab() === 'payload'"
+            (click)="tab.set('payload')"
+          >
+            <span class="dot p"></span>Payload
+          </button>
+          <button
+            type="button"
+            role="tab"
+            [class.active]="tab() === 'header'"
+            [attr.aria-selected]="tab() === 'header'"
+            (click)="tab.set('header')"
+          >
+            <span class="dot h"></span>Header
+          </button>
+          <button
+            type="button"
+            role="tab"
+            [class.active]="tab() === 'signature'"
+            [attr.aria-selected]="tab() === 'signature'"
+            (click)="tab.set('signature')"
+          >
+            <span class="dot s"></span>Signature
+          </button>
+        </div>
+
+        @switch (tab()) {
+          @case ('payload') {
+            <div class="row-between mb">
+              <span class="section-label">Payload (JSON)</span>
+              <ts-copy-button [text]="payloadJson()" label="Copy payload" />
+            </div>
+            <ts-json-viewer [value]="decoded().payload" maxHeight="520px" label="Decoded payload" />
+          }
+          @case ('header') {
+            <div class="row-between mb">
+              <span class="section-label">Header (JSON)</span>
+              <ts-copy-button [text]="headerJson()" label="Copy header" />
+            </div>
+            <ts-json-viewer [value]="decoded().header" label="Decoded header" />
+            <div class="table-wrap mt">
+              <table class="table">
+                <thead>
+                  <tr>
+                    <th>Parameter</th>
+                    <th>Value</th>
+                    <th>Meaning</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (p of headerParams(); track p.key) {
+                    <tr>
+                      <td class="mono">{{ p.key }}</td>
+                      <td class="mono break">{{ p.value }}</td>
+                      <td class="muted small">{{ p.doc }}</td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+          }
+          @case ('signature') {
+            <div class="stack">
+              <div class="row-between">
+                <span class="section-label">Signature (Base64URL)</span>
+                <ts-copy-button
+                  [text]="decoded().segments?.signature ?? ''"
+                  label="Copy signature"
+                />
+              </div>
+              <div class="code-block sig mono">
+                {{ decoded().segments?.signature || '(empty — unsigned token)' }}
+              </div>
+              <dl class="kv">
+                <dt>Algorithm</dt>
+                <dd>
+                  <span class="mono">{{ decoded().alg }}</span>
+                  @if (algSpec(); as spec) {
+                    — {{ spec.label }}
+                  } @else {
+                    — not supported for verification
+                  }
+                </dd>
+                <dt>Length</dt>
+                <dd>
+                  {{ decoded().signatureLength }} bytes ({{ decoded().signatureLength * 8 }} bits)
+                </dd>
+                <dt>Status</dt>
+                <dd>
+                  @if (verification(); as v) {
+                    <span
+                      class="badge"
+                      [class.badge-success]="v.status === 'verified'"
+                      [class.badge-danger]="v.status === 'invalid'"
+                      [class.badge-warning]="v.status !== 'verified' && v.status !== 'invalid'"
+                      >{{ v.title }}</span
+                    >
+                    <span class="muted small"> — {{ v.keyDescription }}</span>
+                  } @else {
+                    <span class="badge">Not verified</span>
+                  }
+                </dd>
+              </dl>
+              <div class="alert alert-info">
+                <ts-icon name="info" [size]="16" />
+                <span
+                  >Decoding reveals the content of any JWT. Only a cryptographic check with the
+                  issuer's key proves it was not modified.</span
+                >
+              </div>
+              <div>
+                <button type="button" class="btn btn-primary" (click)="verify()">
+                  <ts-icon name="signature" [size]="15" /> Verify signature
+                </button>
+              </div>
+            </div>
+          }
+        }
+      </div>
+
+      <div class="card">
+        <div class="card-head">
+          <div>
+            <h2><ts-icon name="layers" /> Claim details</h2>
+            <p class="card-sub">
+              {{ claims().length }} claims · hover a claim name for its meaning
+            </p>
+          </div>
+          <a routerLink="/timeline" class="btn btn-sm"
+            ><ts-icon name="clock" [size]="14" /> Timeline</a
+          >
+        </div>
+        <div class="claims">
+          @for (c of claims(); track c.key) {
+            <div class="claim" [class.has-issue]="c.issue">
+              <div class="claim-head">
+                <span
+                  class="claim-key mono"
+                  [tsTooltip]="
+                    c.doc
+                      ? c.doc.label + ' — ' + c.doc.description
+                      : 'Custom claim — not defined by RFC 7519 or a well-known profile.'
+                  "
+                  [focusable]="true"
+                  >{{ c.key }}</span
+                >
+                <span
+                  class="badge"
+                  [class.badge-info]="c.doc?.category === 'registered'"
+                  [class.badge-success]="c.doc?.category === 'permission'"
+                  [class.badge-accent]="c.doc?.category === 'identity'"
+                  >{{ categoryLabel(c) }}</span
+                >
+                <span class="subtle tiny">{{ c.type }}</span>
+              </div>
+              <div class="claim-value mono">{{ c.display }}</div>
+              @if (c.timestamp !== undefined) {
+                <div class="claim-time small">
+                  <ts-icon name="clock" [size]="13" /> {{ formatTime(c.timestamp) }}
+                  <span class="subtle">({{ relative(c.timestamp) }})</span>
+                </div>
+              }
+              @if (c.issue) {
+                <div class="claim-issue small">
+                  <ts-icon name="alert" [size]="13" /> {{ c.issue }}
+                </div>
+              }
+            </div>
+          }
+        </div>
+      </div>
+    </div>
+  }
+</section>

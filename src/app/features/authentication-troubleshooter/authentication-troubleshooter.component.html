@@ -1,0 +1,531 @@
+<section class="page">
+  <header class="page-head hero-head">
+    <div>
+      <div class="page-title">
+        <span class="title-icon"><ts-icon name="stethoscope" [size]="22" /></span>
+        <h1>Authentication Troubleshooter</h1>
+        <span class="badge badge-accent">Core tool</span>
+      </div>
+      <p class="page-subtitle">
+        Investigate HTTP 401 and 403 failures step by step. Each check shows what was analyzed, the
+        evidence found and how to fix it — with Spring Security–aware simulation of authority
+        mapping and endpoint rules.
+      </p>
+    </div>
+    <div class="row demo-row">
+      <span class="section-label">Quick scenarios</span>
+      <button type="button" class="btn btn-sm" (click)="loadDemo('missing-role')">
+        <ts-icon name="shield-alert" [size]="14" /> 403 Missing role
+      </button>
+      <button type="button" class="btn btn-sm" (click)="loadDemo('expired')">
+        <ts-icon name="clock" [size]="14" /> 401 Expired
+      </button>
+      <button type="button" class="btn btn-sm" (click)="loadDemo('spring-mapping')">
+        <ts-icon name="server" [size]="14" /> Spring mapping
+      </button>
+    </div>
+  </header>
+
+  @if (presetLabel()) {
+    <div class="alert alert-info preset">
+      <ts-icon name="flask" [size]="16" />
+      <span class="grow"
+        ><strong>{{ presetLabel() }}</strong> loaded with locally generated test tokens and the demo
+        key. Edit any field and run again.</span
+      >
+      <button type="button" class="btn btn-ghost btn-sm" (click)="reset()">Reset form</button>
+    </div>
+  }
+
+  <div class="layout">
+    <!-- ======================= Investigation form ======================= -->
+    <form
+      class="card form-card"
+      [formGroup]="form"
+      (ngSubmit)="run()"
+      aria-label="Investigation form"
+    >
+      <fieldset>
+        <legend><span class="step-num">1</span> Token</legend>
+        <ts-token-input
+          label="JWT Token"
+          [value]="value().token"
+          (valueChange)="form.controls.token.setValue($event)"
+          [rows]="4"
+        />
+      </fieldset>
+
+      <fieldset>
+        <legend><span class="step-num">2</span> Failing request</legend>
+        <div class="field">
+          <span class="label" id="status-label">HTTP Status</span>
+          <div class="segmented full" role="radiogroup" aria-labelledby="status-label">
+            @for (s of statusOptions; track s.value) {
+              <button
+                type="button"
+                role="radio"
+                [attr.aria-checked]="value().httpStatus === s.value"
+                [class.active]="value().httpStatus === s.value"
+                (click)="form.controls.httpStatus.setValue(s.value)"
+              >
+                {{ s.label }}
+              </button>
+            }
+          </div>
+        </div>
+        <div class="method-row">
+          <div class="field">
+            <label for="method">Method</label>
+            <select id="method" class="select" formControlName="method">
+              @for (m of methods; track m) {
+                <option [value]="m">{{ m }}</option>
+              }
+            </select>
+          </div>
+          <div class="field grow">
+            <label for="endpoint">Endpoint</label>
+            <input
+              id="endpoint"
+              class="input mono-input"
+              formControlName="endpoint"
+              placeholder="/api/admin/users"
+            />
+          </div>
+        </div>
+      </fieldset>
+
+      <fieldset>
+        <legend>
+          <span class="step-num">3</span> Token validation <span class="opt">optional</span>
+        </legend>
+        <div class="field">
+          <label
+            for="iss"
+            tsTooltip="spring.security.oauth2.resourceserver.jwt.issuer-uri — compared exactly with the iss claim."
+            >Expected Issuer</label
+          >
+          <input
+            id="iss"
+            class="input mono-input"
+            formControlName="expectedIssuer"
+            placeholder="https://auth.example.com/realms/app"
+          />
+        </div>
+        <div class="form-grid">
+          <div class="field">
+            <label
+              for="aud"
+              tsTooltip="spring.security.oauth2.resourceserver.jwt.audiences — one of them must be in aud."
+              >Expected Audience</label
+            >
+            <input
+              id="aud"
+              class="input mono-input"
+              formControlName="expectedAudience"
+              placeholder="orders-api"
+            />
+          </div>
+          <div class="field">
+            <label
+              for="skew"
+              tsTooltip="Tolerance for exp/nbf. Spring's JwtTimestampValidator uses 60 seconds by default."
+              >Clock Skew (s)</label
+            >
+            <input
+              id="skew"
+              class="input"
+              type="number"
+              min="0"
+              max="3600"
+              formControlName="clockSkewSeconds"
+            />
+            @if (form.controls.clockSkewSeconds.invalid) {
+              <span class="error">Between 0 and 3600 seconds.</span>
+            }
+          </div>
+        </div>
+      </fieldset>
+
+      <fieldset>
+        <legend><span class="step-num">4</span> Authorization rule</legend>
+        <div class="field">
+          <label for="rule">Authorization Rule</label>
+          <select id="rule" class="select" formControlName="ruleType">
+            @for (r of ruleTypes; track r.value) {
+              <option [value]="r.value">{{ r.label }} — {{ r.hint }}</option>
+            }
+          </select>
+        </div>
+        <div class="form-grid">
+          <div class="field">
+            <label
+              for="roles"
+              tsTooltip="Role names without the ROLE_ prefix, comma-separated (e.g. ADMIN, MANAGER)."
+              >Required Role</label
+            >
+            <input
+              id="roles"
+              class="input mono-input"
+              formControlName="requiredRoles"
+              placeholder="ADMIN"
+            />
+          </div>
+          <div class="field">
+            <label
+              for="scopes"
+              tsTooltip="OAuth scopes. In Spring mode they are compared as SCOPE_<scope>."
+              >Required Scope</label
+            >
+            <input
+              id="scopes"
+              class="input mono-input"
+              formControlName="requiredScopes"
+              placeholder="orders.read"
+            />
+          </div>
+          <div class="field span-2">
+            <label
+              for="auths"
+              tsTooltip="Exact authority strings, compared as-is (e.g. ROLE_ADMIN, READ)."
+              >Required Authority</label
+            >
+            <input
+              id="auths"
+              class="input mono-input"
+              formControlName="requiredAuthorities"
+              placeholder="READ, WRITE"
+            />
+          </div>
+        </div>
+        <div class="expr">
+          <span class="section-label">Evaluated rule</span>
+          <code class="mono">{{ expression() || '— no requirement configured —' }}</code>
+        </div>
+        <div class="field">
+          <label for="custom"
+            >Custom Spring expression <span class="opt">overrides the fields above</span></label
+          >
+          <input
+            id="custom"
+            class="input mono-input"
+            formControlName="customExpression"
+            placeholder="hasRole('ADMIN') and hasAuthority('SCOPE_admin')"
+            spellcheck="false"
+          />
+          @if (value().customExpression && builtExpression()) {
+            <button type="button" class="link-btn" (click)="useBuiltExpression()">
+              Use the rule built from the fields instead
+            </button>
+          }
+        </div>
+      </fieldset>
+
+      <fieldset>
+        <legend><span class="step-num">5</span> Spring Security</legend>
+        <label class="switch">
+          <input type="checkbox" formControlName="springMode" />
+          <span
+            ><strong>Spring Security Mode</strong> — exact JwtGrantedAuthoritiesConverter
+            semantics</span
+          >
+        </label>
+        @if (value().springMode) {
+          <div class="rules" formArrayName="mappingRules">
+            <div class="rules-head">
+              <span class="section-label">Authority mapping (converters)</span>
+              <select
+                class="select select-sm"
+                aria-label="Add a mapping preset"
+                (change)="addPreset($any($event.target).value); $any($event.target).value = ''"
+              >
+                <option value="">+ Add preset…</option>
+                @for (p of mappingPresets; track p.label; let i = $index) {
+                  <option [value]="i">{{ p.label }}</option>
+                }
+              </select>
+            </div>
+            @for (group of mappingRules.controls; track group; let i = $index) {
+              <div class="rule" [formGroupName]="i">
+                <input
+                  class="input mono-input"
+                  formControlName="claim"
+                  placeholder="claim (e.g. roles)"
+                  aria-label="Source claim"
+                  tsTooltip="Claim to read. Use a|b for fallbacks and dots for nested paths."
+                />
+                <input
+                  class="input mono-input"
+                  formControlName="prefix"
+                  placeholder="prefix"
+                  aria-label="Authority prefix"
+                />
+                <input
+                  class="input mono-input delim"
+                  formControlName="delimiter"
+                  placeholder="␣"
+                  aria-label="Delimiter"
+                  tsTooltip="Delimiter used to split string claims (default: space)."
+                />
+                <button
+                  type="button"
+                  class="btn btn-ghost btn-icon"
+                  aria-label="Remove mapping"
+                  (click)="removeRule(i)"
+                >
+                  <ts-icon name="trash" [size]="15" />
+                </button>
+              </div>
+            } @empty {
+              <p class="small subtle">No converter — the token would grant no authorities.</p>
+            }
+            <button type="button" class="btn btn-ghost btn-sm" (click)="addRule()">
+              <ts-icon name="plus" [size]="14" /> Add custom mapping
+            </button>
+          </div>
+        } @else {
+          <p class="small subtle">
+            Generic mode: roles, scopes and authorities are compared without prefixes and
+            case-insensitively.
+          </p>
+        }
+      </fieldset>
+
+      <fieldset>
+        <legend><span class="step-num">6</span> Signature Verification</legend>
+        <div class="segmented full" role="radiogroup" aria-label="Signature verification mode">
+          <button
+            type="button"
+            [class.active]="value().signatureMode === 'skip'"
+            (click)="form.controls.signatureMode.setValue('skip')"
+          >
+            Skip
+          </button>
+          <button
+            type="button"
+            [class.active]="value().signatureMode === 'use-verifier'"
+            (click)="form.controls.signatureMode.setValue('use-verifier')"
+          >
+            Verifier result
+          </button>
+          <button
+            type="button"
+            [class.active]="value().signatureMode === 'verify-now'"
+            (click)="form.controls.signatureMode.setValue('verify-now')"
+          >
+            Verify now
+          </button>
+        </div>
+        @switch (value().signatureMode) {
+          @case ('skip') {
+            <p class="small subtle">
+              The signature will be reported as <strong>Not Verified</strong>. Decoding never
+              implies authenticity.
+            </p>
+          }
+          @case ('use-verifier') {
+            @if (verifierResult(); as v) {
+              <div
+                class="alert"
+                [class.alert-success]="v.status === 'verified'"
+                [class.alert-danger]="v.status === 'invalid'"
+                [class.alert-warning]="v.status !== 'verified' && v.status !== 'invalid'"
+              >
+                <ts-icon name="signature" [size]="16" />
+                <span
+                  >Signature Verifier result for this token: <strong>{{ v.title }}</strong></span
+                >
+              </div>
+            } @else {
+              <p class="small subtle">
+                No Signature Verifier result exists for this exact token yet.
+              </p>
+            }
+          }
+          @case ('verify-now') {
+            <div class="form-grid">
+              <div class="field">
+                <label for="keyType">Key format</label>
+                <select id="keyType" class="select" formControlName="keyType">
+                  <option value="secret">Shared secret (HS*)</option>
+                  <option value="pem">PEM public key / certificate</option>
+                  <option value="jwk">JWK</option>
+                  <option value="jwks">JWKS</option>
+                </select>
+              </div>
+              @if (value().keyType === 'secret') {
+                <div class="field">
+                  <label for="enc">Encoding</label>
+                  <select id="enc" class="select" formControlName="secretEncoding">
+                    <option value="utf8">UTF-8</option>
+                    <option value="base64">Base64</option>
+                    <option value="base64url">Base64URL</option>
+                  </select>
+                </div>
+              }
+              <div class="field span-2">
+                <div class="row-between">
+                  <label for="key">{{
+                    value().keyType === 'secret' ? 'Secret' : 'Public key'
+                  }}</label>
+                  @if (value().keyType === 'secret') {
+                    <button type="button" class="link-btn" (click)="showKey.set(!showKey())">
+                      {{ showKey() ? 'Hide' : 'Show' }}
+                    </button>
+                  }
+                </div>
+                @if (value().keyType === 'secret') {
+                  <input
+                    id="key"
+                    class="input mono-input"
+                    [type]="showKey() ? 'text' : 'password'"
+                    formControlName="keyValue"
+                    autocomplete="off"
+                  />
+                } @else {
+                  <textarea
+                    id="key"
+                    class="textarea"
+                    rows="4"
+                    formControlName="keyValue"
+                    spellcheck="false"
+                    placeholder="-----BEGIN PUBLIC KEY----- / JWK / JWKS JSON"
+                  ></textarea>
+                }
+                <span class="hint">Kept in memory only; never included in reports.</span>
+              </div>
+            </div>
+          }
+        }
+      </fieldset>
+
+      <button type="submit" class="btn btn-gradient btn-lg btn-block run" [disabled]="running()">
+        @if (running()) {
+          <span class="spinner"></span> Analyzing…
+        } @else {
+          <ts-icon name="play" [size]="16" /> Run Authentication Diagnosis
+        }
+      </button>
+    </form>
+
+    <!-- ======================= Results ======================= -->
+    <div class="results stack" #results aria-live="polite">
+      @if (result(); as r) {
+        <div class="card headline tone-{{ r.headline.tone }}">
+          <div class="headline-top">
+            <div class="headline-icon">
+              <ts-icon
+                [name]="
+                  r.headline.tone === 'success'
+                    ? 'shield-check'
+                    : r.headline.tone === 'danger'
+                      ? 'shield-alert'
+                      : 'circle-help'
+                "
+                [size]="30"
+              />
+            </div>
+            <div class="grow">
+              <div class="row">
+                <span class="mono request"
+                  >{{ r.method }} {{ r.endpoint || '(endpoint not informed)' }}</span
+                >
+                @if (r.httpStatus !== 'unknown') {
+                  <span class="status-pill" [class.s401]="r.httpStatus === '401'"
+                    >HTTP {{ statusLabel() }}</span
+                  >
+                }
+              </div>
+              <h2 class="headline-title">{{ r.headline.title }}</h2>
+              <p class="headline-desc">{{ r.headline.description }}</p>
+            </div>
+            @if (r.headline.simulatedDecision) {
+              <span class="decision-badge">{{ r.headline.simulatedDecision }}</span>
+            }
+          </div>
+          <div class="counts">
+            <div class="count c-pass">
+              <strong>{{ r.counts.passed }}</strong
+              ><span>Passed</span>
+            </div>
+            <div class="count c-fail">
+              <strong>{{ r.counts.failed }}</strong
+              ><span>Failed</span>
+            </div>
+            <div class="count c-warn">
+              <strong>{{ r.counts.warning }}</strong
+              ><span>Warnings</span>
+            </div>
+            <div class="count c-nv">
+              <strong>{{ r.counts.notVerified }}</strong
+              ><span>Not verified</span>
+            </div>
+            <div class="count c-na">
+              <strong>{{ r.counts.notApplicable }}</strong
+              ><span>Not applicable</span>
+            </div>
+          </div>
+          @if (r.statusNote) {
+            <div class="alert alert-warning note">
+              <ts-icon name="alert" [size]="16" /> <span>{{ r.statusNote }}</span>
+            </div>
+          }
+          <p class="disclaimer">
+            <ts-icon name="info" [size]="13" /> Local analysis of the token and the rules you
+            configured. It does not guarantee how the real server will decide.
+          </p>
+        </div>
+
+        <div class="card"><ts-diagnosis-pipeline [steps]="r.steps" [focus]="focusStep()" /></div>
+        <div class="card">
+          <ts-diagnosis-summary [result]="r" (applyMapping)="applyMapping($event)" />
+        </div>
+      } @else {
+        <div class="card intro">
+          <div class="intro-head">
+            <div class="empty-icon"><ts-icon name="stethoscope" [size]="26" /></div>
+            <div>
+              <h2>Ready to investigate</h2>
+              <p class="muted">
+                Paste the token from the failing request, describe the endpoint and run the
+                diagnosis. Or load a scenario:
+              </p>
+            </div>
+          </div>
+          <div class="row">
+            <button type="button" class="btn btn-primary" (click)="loadDemo('missing-role')">
+              <ts-icon name="play" [size]="14" /> HTTP 403 — Missing role
+            </button>
+            <button type="button" class="btn" (click)="loadDemo('missing-scope')">
+              403 — Missing scope
+            </button>
+            <button type="button" class="btn" (click)="loadDemo('invalid-signature')">
+              401 — Invalid signature
+            </button>
+          </div>
+          <ol class="preview">
+            @for (p of pipelinePreview; track p; let i = $index) {
+              <li>
+                <span class="pnum mono">{{ (i + 1).toString().padStart(2, '0') }}</span> {{ p }}
+                <ts-icon name="circle-minus" [size]="15" class="subtle" />
+              </li>
+            }
+          </ol>
+        </div>
+      }
+
+      <div class="card">
+        <ts-spring-analyzer
+          [payload]="payload()"
+          [rules]="input().mappingRules"
+          [expression]="expression()"
+          [method]="value().method"
+          [endpoint]="value().endpoint"
+        />
+      </div>
+
+      @if (result(); as r) {
+        <div class="card"><ts-diagnosis-report [result]="r" [claims]="payload()" /></div>
+      }
+    </div>
+  </div>
+</section>

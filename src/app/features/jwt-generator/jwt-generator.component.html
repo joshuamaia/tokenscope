@@ -1,0 +1,337 @@
+<section class="page">
+  <header class="page-head">
+    <div>
+      <div class="page-title">
+        <ts-icon name="sparkles" [size]="24" />
+        <h1>JWT Generator</h1>
+      </div>
+      <p class="page-subtitle">
+        Create genuinely signed test tokens with the Web Crypto API. Keys are generated locally,
+        kept in memory only and never persisted.
+      </p>
+    </div>
+  </header>
+
+  <div class="alert alert-warning">
+    <ts-icon name="alert" [size]="16" />
+    <span
+      >For testing only. Never use generated secrets or keys in production, and never paste
+      production signing keys into any tool.</span
+    >
+  </div>
+
+  <div class="gen-grid">
+    <form class="card stack" [formGroup]="form" (ngSubmit)="generate()">
+      <div class="card-head">
+        <h2><ts-icon name="file" /> Claims</h2>
+      </div>
+      <div class="form-grid">
+        <div class="field">
+          <label for="sub" tsTooltip="Subject — usually the user or client identifier."
+            >Subject (sub)</label
+          >
+          <input id="sub" class="input mono-input" formControlName="sub" />
+        </div>
+        <div class="field">
+          <label for="iss" tsTooltip="Issuer — the authorization server URL.">Issuer (iss)</label>
+          <input id="iss" class="input mono-input" formControlName="iss" />
+        </div>
+        <div class="field">
+          <label
+            for="aud"
+            tsTooltip="Comma-separated; a single value becomes a string, several become an array."
+            >Audience (aud)</label
+          >
+          <input id="aud" class="input mono-input" formControlName="aud" />
+        </div>
+        <div class="field">
+          <label
+            for="kid"
+            tsTooltip="Optional key ID header. RSA keys get an RFC 7638 thumbprint kid automatically."
+            >Key ID (kid)</label
+          >
+          <input
+            id="kid"
+            class="input mono-input"
+            formControlName="kid"
+            placeholder="auto for RSA"
+          />
+        </div>
+        <div class="field">
+          <label for="roles">Roles (comma-separated)</label>
+          <input
+            id="roles"
+            class="input mono-input"
+            formControlName="roles"
+            placeholder="USER, ADMIN"
+          />
+        </div>
+        <div class="field">
+          <label for="scopes">Scopes (space-separated)</label>
+          <input
+            id="scopes"
+            class="input mono-input"
+            formControlName="scopes"
+            placeholder="openid profile.read"
+          />
+        </div>
+      </div>
+
+      <div class="field">
+        <span class="label">Expiration (exp)</span>
+        <div class="segmented" role="radiogroup" aria-label="Expiration">
+          @for (e of expirations; track e.value) {
+            <button
+              type="button"
+              role="radio"
+              [attr.aria-checked]="value().expiration === e.value"
+              [class.active]="value().expiration === e.value"
+              (click)="form.controls.expiration.setValue(e.value)"
+            >
+              {{ e.label }}
+            </button>
+          }
+        </div>
+        @if (value().expiration === 'custom') {
+          <div class="inline">
+            <input
+              class="input small-input"
+              type="number"
+              formControlName="customMinutes"
+              aria-label="Custom expiration in minutes"
+            />
+            <span class="muted small"
+              >minutes from now (negative values create an already-expired token)</span
+            >
+          </div>
+        }
+      </div>
+
+      <div class="row toggles">
+        <label class="check"
+          ><input type="checkbox" formControlName="includeIat" /> Include iat</label
+        >
+        <label class="check"
+          ><input type="checkbox" formControlName="includeJti" /> Include jti</label
+        >
+        <label class="check"
+          ><input type="checkbox" formControlName="includeNbf" /> Include nbf</label
+        >
+        @if (value().includeNbf) {
+          <span class="inline">
+            <input
+              class="input small-input"
+              type="number"
+              formControlName="nbfOffsetMinutes"
+              aria-label="nbf offset in minutes"
+            />
+            <span class="muted small">min offset</span>
+          </span>
+        }
+      </div>
+
+      <div class="field">
+        <label for="custom">Custom claims (JSON object)</label>
+        <textarea
+          id="custom"
+          class="textarea"
+          rows="4"
+          formControlName="customClaims"
+          spellcheck="false"
+        ></textarea>
+        @if (form.controls.customClaims.errors?.['json']; as err) {
+          <span class="error">{{ err }}</span>
+        } @else {
+          <span class="hint"
+            >Merged into the payload. Registered claims above take precedence.</span
+          >
+        }
+      </div>
+
+      <div class="divider"></div>
+
+      <div class="card-head">
+        <h2><ts-icon name="key" /> Signing</h2>
+        <button type="button" class="btn btn-ghost btn-sm" (click)="discardKeys()">
+          <ts-icon name="trash" [size]="14" /> Discard keys
+        </button>
+      </div>
+      <div class="field">
+        <label for="alg">Algorithm</label>
+        <select id="alg" class="select" formControlName="alg">
+          @for (a of algorithms; track a) {
+            <option [value]="a">
+              {{ a }} — {{ a.startsWith('HS') ? 'HMAC shared secret' : 'RSA key pair' }}
+            </option>
+          }
+        </select>
+      </div>
+
+      @if (!isRsa()) {
+        <div class="field">
+          <div class="row-between">
+            <label for="secret">Secret</label>
+            <div class="row">
+              <select
+                class="select select-sm"
+                formControlName="secretEncoding"
+                aria-label="Secret encoding"
+              >
+                <option value="utf8">UTF-8</option>
+                <option value="base64">Base64</option>
+                <option value="base64url">Base64URL</option>
+              </select>
+              <button type="button" class="btn btn-sm" (click)="generateSecret()">
+                <ts-icon name="refresh" [size]="14" /> Random secret
+              </button>
+            </div>
+          </div>
+          <div class="inline">
+            <input
+              id="secret"
+              class="input mono-input"
+              [type]="showSecret() ? 'text' : 'password'"
+              formControlName="secret"
+              autocomplete="off"
+              placeholder="Leave empty to generate a random 256-bit secret"
+            />
+            <button
+              type="button"
+              class="btn btn-icon"
+              [attr.aria-label]="showSecret() ? 'Hide secret' : 'Show secret'"
+              (click)="showSecret.set(!showSecret())"
+            >
+              <ts-icon name="eye" [size]="16" />
+            </button>
+          </div>
+          @if (value().secret && secretBits() !== null && secretBits()! < minBits()) {
+            <span class="error"
+              >{{ secretBits() }}-bit secret: {{ value().alg }} requires at least
+              {{ minBits() }} bits (RFC 7518). Strict verifiers will reject it.</span
+            >
+          } @else if (value().secret && secretBits() === null) {
+            <span class="error">The secret is not valid {{ value().secretEncoding }}.</span>
+          } @else if (value().secret) {
+            <span class="hint">{{ secretBits() }}-bit secret · held in memory only</span>
+          }
+        </div>
+      } @else {
+        <div class="stack-sm">
+          <div class="row">
+            <button
+              type="button"
+              class="btn"
+              [disabled]="generatingKey()"
+              (click)="generateKeyPair()"
+            >
+              @if (generatingKey()) {
+                <span class="spinner"></span>
+              } @else {
+                <ts-icon name="key" [size]="15" />
+              }
+              {{ keyPair() ? 'Regenerate' : 'Generate' }} RSA-2048 key pair
+            </button>
+            @if (keyPair(); as kp) {
+              <span class="badge badge-success">kid {{ kp.kid }}</span>
+            }
+          </div>
+          @if (!keyPair()) {
+            <span class="hint"
+              >A demo key pair is generated automatically when you sign. The private key is a
+              non-extractable CryptoKey.</span
+            >
+          }
+        </div>
+      }
+
+      <button
+        type="submit"
+        class="btn btn-gradient btn-lg"
+        [disabled]="signing() || generatingKey()"
+      >
+        @if (signing()) {
+          <span class="spinner"></span>
+        } @else {
+          <ts-icon name="sparkles" [size]="16" />
+        }
+        Generate signed token
+      </button>
+    </form>
+
+    <div class="stack">
+      @if (token(); as t) {
+        <div class="card output">
+          <div class="card-head">
+            <div>
+              <h2><ts-icon name="circle-check" /> Generated token</h2>
+              <p class="card-sub">
+                {{ decoded()?.alg }} · {{ t.length }} characters · signed locally
+              </p>
+            </div>
+            <ts-copy-button [text]="t" label="Copy token" toast="Token copied" />
+          </div>
+          <div class="token-out mono">
+            @if (decoded()?.segments; as s) {
+              <span class="jwt-h">{{ s.header }}</span
+              >.<span class="jwt-p">{{ s.payload }}</span
+              >.<span class="jwt-s">{{ s.signature }}</span>
+            }
+          </div>
+          <div class="actions">
+            <button type="button" class="btn btn-sm primary" (click)="diagnose()">
+              <ts-icon name="stethoscope" [size]="14" /> Diagnose Generated Token
+            </button>
+            <button type="button" class="btn btn-sm" (click)="inspect()">
+              <ts-icon name="inspect" [size]="14" /> Inspect Generated Token
+            </button>
+            <button type="button" class="btn btn-sm" (click)="analyze()">
+              <ts-icon name="shield" [size]="14" /> Analyze Generated Token
+            </button>
+            <button type="button" class="btn btn-sm" (click)="compare()">
+              <ts-icon name="compare" [size]="14" /> Compare Generated Token
+            </button>
+            <button type="button" class="btn btn-sm" (click)="verify()">
+              <ts-icon name="signature" [size]="14" /> Verify Signature
+            </button>
+          </div>
+        </div>
+      }
+
+      <div class="card">
+        <div class="card-head">
+          <h2><ts-icon name="eye" /> {{ token() ? 'Signed payload' : 'Payload preview' }}</h2>
+          @if (!token()) {
+            <span class="badge">live preview</span>
+          }
+        </div>
+        <ts-json-viewer
+          [value]="token() ? decoded()?.payload : preview()"
+          maxHeight="360px"
+          label="Payload"
+        />
+      </div>
+
+      @if (isRsa() && keyPair(); as kp) {
+        <div class="card stack">
+          <div class="card-head">
+            <h2><ts-icon name="key" /> Public key (share with verifiers)</h2>
+          </div>
+          <div class="row-between">
+            <span class="section-label">PEM (SPKI)</span
+            ><ts-copy-button [text]="kp.publicPem" label="Copy PEM" />
+          </div>
+          <pre class="code-block key">{{ kp.publicPem }}</pre>
+          <div class="row-between">
+            <span class="section-label">JWKS</span
+            ><ts-copy-button [text]="jwksJson()" label="Copy JWKS" />
+          </div>
+          <pre class="code-block key">{{ jwksJson() }}</pre>
+          <p class="tiny subtle">
+            The private key never leaves the browser's crypto engine and is lost on reload or
+            "Discard keys".
+          </p>
+        </div>
+      }
+    </div>
+  </div>
+</section>

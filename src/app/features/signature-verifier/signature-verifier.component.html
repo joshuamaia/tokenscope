@@ -1,0 +1,364 @@
+<section class="page">
+  <header class="page-head">
+    <div>
+      <div class="page-title">
+        <ts-icon name="signature" [size]="24" />
+        <h1>Signature Verifier</h1>
+      </div>
+      <p class="page-subtitle">
+        Real cryptographic verification with the Web Crypto API — HS256/384/512, RS256/384/512,
+        PS256/384/512, ES256/384/512 and EdDSA (when the browser supports Ed25519).
+      </p>
+    </div>
+  </header>
+
+  @if (note()) {
+    <div class="alert alert-info">
+      <ts-icon name="flask" [size]="16" /> <span>{{ note() }}</span>
+    </div>
+  }
+
+  <div class="verifier-grid">
+    <div class="stack">
+      <div class="card stack">
+        <ts-token-input
+          [(value)]="workspace.token"
+          [rows]="4"
+          [showSegments]="true"
+          [sampleable]="true"
+          (sample)="loadSample()"
+        />
+        @if (decoded().decoded) {
+          <dl class="kv">
+            <dt>Algorithm</dt>
+            <dd>
+              <span class="mono">{{ alg() }}</span>
+              @if (algSpec(); as spec) {
+                <span class="muted"> — {{ spec.label }}</span>
+              } @else {
+                <span class="badge badge-warning">Unsupported</span>
+              }
+            </dd>
+            <dt>Key ID (kid)</dt>
+            <dd class="mono">{{ kid() ?? '—' }}</dd>
+          </dl>
+          @if (tokenKeyRefs().length) {
+            <div class="alert alert-warning">
+              <ts-icon name="alert" [size]="16" />
+              <span
+                >The header references keys via
+                <strong class="mono">{{ tokenKeyRefs().join(', ') }}</strong
+                >. TokenScope never fetches or trusts keys chosen by the token itself — provide the
+                issuer's key explicitly.</span
+              >
+            </div>
+          }
+        }
+      </div>
+
+      <div class="card">
+        <div class="card-head">
+          <h2><ts-icon name="key" /> Verification key</h2>
+          <button type="button" class="btn btn-ghost btn-sm" (click)="clearKeys()">
+            <ts-icon name="trash" [size]="14" /> Clear keys
+          </button>
+        </div>
+        <div class="tabs" role="tablist" aria-label="Key format">
+          <button
+            type="button"
+            role="tab"
+            [class.active]="tab() === 'secret'"
+            (click)="tab.set('secret')"
+          >
+            Secret (HS*)
+          </button>
+          <button
+            type="button"
+            role="tab"
+            [class.active]="tab() === 'pem'"
+            (click)="tab.set('pem')"
+          >
+            PEM public key
+          </button>
+          <button
+            type="button"
+            role="tab"
+            [class.active]="tab() === 'jwk'"
+            (click)="tab.set('jwk')"
+          >
+            JWK
+          </button>
+          <button
+            type="button"
+            role="tab"
+            [class.active]="tab() === 'jwks'"
+            (click)="tab.set('jwks')"
+          >
+            JWKS
+          </button>
+          <button
+            type="button"
+            role="tab"
+            [class.active]="tab() === 'remote'"
+            (click)="tab.set('remote')"
+          >
+            <ts-icon name="globe" [size]="14" /> Remote JWKS
+          </button>
+        </div>
+
+        @switch (tab()) {
+          @case ('secret') {
+            <div class="stack">
+              <div class="field">
+                <div class="row-between">
+                  <label for="secret">Shared secret</label>
+                  <div class="segmented" role="group" aria-label="Secret encoding">
+                    <button
+                      type="button"
+                      [class.active]="encoding() === 'utf8'"
+                      (click)="encoding.set('utf8')"
+                    >
+                      UTF-8
+                    </button>
+                    <button
+                      type="button"
+                      [class.active]="encoding() === 'base64'"
+                      (click)="encoding.set('base64')"
+                    >
+                      Base64
+                    </button>
+                    <button
+                      type="button"
+                      [class.active]="encoding() === 'base64url'"
+                      (click)="encoding.set('base64url')"
+                    >
+                      Base64URL
+                    </button>
+                  </div>
+                </div>
+                <div class="secret-row">
+                  <input
+                    id="secret"
+                    class="input mono-input"
+                    [type]="revealSecret() ? 'text' : 'password'"
+                    autocomplete="off"
+                    spellcheck="false"
+                    [value]="secret()"
+                    (input)="secret.set($any($event.target).value)"
+                    placeholder="your-256-bit-secret"
+                  />
+                  <button
+                    type="button"
+                    class="btn btn-icon"
+                    [attr.aria-label]="revealSecret() ? 'Hide secret' : 'Show secret'"
+                    (click)="revealSecret.set(!revealSecret())"
+                  >
+                    <ts-icon name="eye" [size]="16" />
+                  </button>
+                </div>
+                <span class="hint"
+                  >Spring's NimbusJwtDecoder.withSecretKey uses the raw bytes of the key — choose
+                  the encoding your server uses.</span
+                >
+              </div>
+            </div>
+          }
+          @case ('pem') {
+            <div class="field">
+              <label for="pem">PEM public key or certificate</label>
+              <textarea
+                id="pem"
+                class="textarea"
+                rows="8"
+                spellcheck="false"
+                [value]="pem()"
+                (input)="pem.set($any($event.target).value)"
+                placeholder="-----BEGIN PUBLIC KEY-----&#10;MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA…&#10;-----END PUBLIC KEY-----"
+              ></textarea>
+              <span class="hint"
+                >Accepts PUBLIC KEY (SPKI), RSA PUBLIC KEY (PKCS#1) and CERTIFICATE. Private keys
+                are refused.</span
+              >
+            </div>
+          }
+          @case ('jwk') {
+            <div class="field">
+              <label for="jwk">JSON Web Key</label>
+              <textarea
+                id="jwk"
+                class="textarea"
+                rows="8"
+                spellcheck="false"
+                [value]="jwk()"
+                (input)="jwk.set($any($event.target).value)"
+                placeholder='{ "kty": "RSA", "n": "…", "e": "AQAB", "kid": "…" }'
+              ></textarea>
+              <span class="hint"
+                >kty, alg, use, key_ops and crv are checked against the token algorithm.</span
+              >
+            </div>
+          }
+          @case ('jwks') {
+            <div class="field">
+              <label for="jwks">JSON Web Key Set</label>
+              <textarea
+                id="jwks"
+                class="textarea"
+                rows="8"
+                spellcheck="false"
+                [value]="jwks()"
+                (input)="jwks.set($any($event.target).value)"
+                placeholder='{ "keys": [ { "kty": "RSA", "kid": "…", "n": "…", "e": "AQAB" } ] }'
+              ></textarea>
+              <span class="hint"
+                >The key is selected by the token's kid, as Spring's NimbusJwtDecoder.withJwkSetUri
+                does.</span
+              >
+            </div>
+          }
+          @case ('remote') {
+            <div class="stack">
+              <div class="alert alert-info">
+                <ts-icon name="info" [size]="16" />
+                <span
+                  >Fetching a JWKS is a network request from your browser to the URL you type. Only
+                  a plain GET is sent — never the JWT. The endpoint must allow CORS; no proxy is
+                  used.</span
+                >
+              </div>
+              <div class="field">
+                <label for="remote">JWKS URL (HTTPS)</label>
+                <div class="secret-row">
+                  <input
+                    id="remote"
+                    class="input mono-input"
+                    type="url"
+                    [value]="remoteUrl()"
+                    (input)="remoteUrl.set($any($event.target).value)"
+                    placeholder="https://issuer.example.com/.well-known/jwks.json"
+                  />
+                  <button
+                    type="button"
+                    class="btn"
+                    [disabled]="!remoteUrl() || fetching()"
+                    (click)="fetchRemote()"
+                  >
+                    @if (fetching()) {
+                      <span class="spinner"></span>
+                    } @else {
+                      <ts-icon name="download" [size]="15" />
+                    }
+                    Fetch
+                  </button>
+                </div>
+              </div>
+              @if (remoteInfo()) {
+                <div
+                  class="alert"
+                  [class.alert-success]="remoteJwks()"
+                  [class.alert-danger]="!remoteJwks()"
+                >
+                  <ts-icon [name]="remoteJwks() ? 'circle-check' : 'circle-x'" [size]="16" />
+                  <span>{{ remoteInfo() }}</span>
+                </div>
+              }
+              @if (remoteJwks()) {
+                <pre class="code-block jwks-preview">{{ remoteJwks() }}</pre>
+              }
+            </div>
+          }
+        }
+
+        <div class="verify-row">
+          <button
+            type="button"
+            class="btn btn-gradient btn-lg"
+            [disabled]="!decoded().decoded || verifying()"
+            (click)="verify()"
+          >
+            @if (verifying()) {
+              <span class="spinner"></span>
+            } @else {
+              <ts-icon name="shield-check" [size]="17" />
+            }
+            Verify Signature
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div class="stack">
+      @if (currentResult(); as r) {
+        <div class="card result result-{{ r.status }}" aria-live="polite">
+          <div class="result-head">
+            <div class="result-icon"><ts-icon [name]="statusIcon[r.status]" [size]="28" /></div>
+            <div>
+              <div class="result-title">{{ r.title }}</div>
+              <p class="muted">{{ r.message }}</p>
+            </div>
+          </div>
+          @if (r.details.length) {
+            <div class="section-label mt">Details</div>
+            <ul class="list">
+              @for (d of r.details; track d) {
+                <li>{{ d }}</li>
+              }
+            </ul>
+          }
+          @if (r.warnings.length) {
+            <div class="section-label mt">Notes</div>
+            <div class="stack-sm">
+              @for (w of r.warnings; track w) {
+                <div class="alert alert-warning">
+                  <ts-icon name="alert" [size]="15" /> <span>{{ w }}</span>
+                </div>
+              }
+            </div>
+          }
+          <div class="row mt">
+            <a class="btn btn-sm" routerLink="/troubleshooter"
+              ><ts-icon name="stethoscope" [size]="14" /> Use result in Troubleshooter</a
+            >
+          </div>
+        </div>
+      } @else {
+        <div class="card result result-not-verified">
+          <div class="result-head">
+            <div class="result-icon"><ts-icon name="circle-help" [size]="28" /></div>
+            <div>
+              <div class="result-title">Not Verified</div>
+              <p class="muted">
+                No verification has been executed for this token yet. A decoded token is not a
+                trusted token.
+              </p>
+            </div>
+          </div>
+        </div>
+      }
+
+      <div class="card">
+        <h3 class="mb"><ts-icon name="lightbulb" [size]="16" /> What a valid signature means</h3>
+        <ul class="list muted small">
+          <li>
+            The header and payload were not modified since they were signed with the matching key.
+          </li>
+          <li>
+            It does <strong>not</strong> prove the key belongs to a trusted issuer — the server
+            decides which keys it trusts.
+          </li>
+          <li>
+            Expiration, issuer, audience and authorization rules are still evaluated separately.
+          </li>
+          <li>
+            Keys and secrets stay in memory only and are discarded on "Clear keys" or page reload.
+          </li>
+        </ul>
+        <div class="divider"></div>
+        <div class="row-between">
+          <span class="subtle tiny">Supported: {{ supported.join(' · ') }}</span>
+        </div>
+      </div>
+      <ts-send-to [token]="workspace.token()" exclude="signature" />
+    </div>
+  </div>
+</section>

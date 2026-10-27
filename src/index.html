@@ -1,13 +1,26 @@
 <!doctype html>
-<html lang="en">
-<head>
-  <meta charset="utf-8">
-  <title>Tokenscope</title>
-  <base href="/">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <link rel="icon" type="image/x-icon" href="favicon.ico">
-</head>
-<body>
-  <app-root></app-root>
-</body>
+<html lang="en" data-theme="dark">
+  <head>
+    <meta charset="utf-8" />
+    <title>TokenScope — JWT Inspector, Security Analyzer &amp; Authentication Troubleshooter</title>
+    <base href="/" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta
+      name="description"
+      content="Inspect, analyze, compare, generate and troubleshoot JWT tokens locally in your browser. Diagnose HTTP 401 and 403 failures with Spring Security insights."
+    />
+    <meta name="referrer" content="no-referrer" />
+    <meta name="color-scheme" content="dark light" />
+    <link rel="icon" type="image/x-icon" href="favicon.ico" />
+    <script>
+      // Apply the stored theme before Angular boots to avoid a flash of the wrong theme.
+      try {
+        if (localStorage.getItem('tokenscope.theme') === 'light')
+          document.documentElement.setAttribute('data-theme', 'light');
+      } catch (e) {}
+    </script>
+  </head>
+  <body>
+    <app-root></app-root>
+  </body>
 </html>
